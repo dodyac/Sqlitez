@@ -14,7 +14,7 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
     companion object {
 
         @Suppress("UNCHECKED_CAST")
-        fun <T : Any> Context.getUser(entity: Class<*>, id: Long): T {
+        fun <T : Any> Context.readData(entity: Class<*>, id: Long): T {
             val db = Sqlitez(this, entity).readableDatabase
             val user = cupboard().withDatabase(db)[entity, id]
             db.close()
@@ -22,19 +22,19 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
         }
 
 
-        fun <T : Any> Context.insertUser(entity: Class<*>, model: T?) {
+        fun <T : Any> Context.insertData(entity: Class<*>, model: T?) {
             val db = Sqlitez(this, entity).writableDatabase
             cupboard().withDatabase(db).put(model)
             db.close()
         }
 
-        fun Context.deleteUser(entity: Class<*>, id: Long) {
+        fun Context.deleteColumn(entity: Class<*>, id: Long) {
             val db = Sqlitez(this, entity).writableDatabase
             cupboard().withDatabase(db).delete(entity, id)
             db.close()
         }
 
-        fun <T : Any> Context.updateUser(entity: Class<*>, model: T?, id: Int) {
+        fun <T : Any> Context.updateData(entity: Class<*>, model: T?, id: Int) {
             val db = Sqlitez(this, entity).writableDatabase
             val parcel: Parcel = obtain()
             parcel.writeMap(Gson().fromJson(Gson().toJson(model), HashMap::class.java))
