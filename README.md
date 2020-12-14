@@ -13,9 +13,6 @@ Sqlitez is an Android Library that can helps you more easier with CRUD SQLite fo
     implementation <span class="pl-s"><span class="pl-pds">'</span>com.github.dodyac:Sqlitez:$version'
 }<span class="pl-pds"></span></span></div>
 
-## Usage
-soon
-
 ## Credits
 
 * https://github.com/littlerobots/cupboard - Cupboard for Android
