@@ -39,7 +39,7 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             val parcel: Parcel = obtain()
             parcel.writeMap(Gson().fromJson(Gson().toJson(model), HashMap::class.java))
             parcel.setDataPosition(0)
-            cupboard().withDatabase(db).update(entity, ContentValues.CREATOR.createFromParcel(parcel), "_id = ?", id.toString())
+            cupboard().withDatabase(db).update(entity, ContentValues.CREATOR.createFromParcel(parcel), "_id = $id", null)
             db.close()
         }
     }
