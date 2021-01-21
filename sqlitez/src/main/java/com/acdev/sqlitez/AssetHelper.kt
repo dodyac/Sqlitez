@@ -27,7 +27,7 @@ open class AssetHelper(context: Context, name: String?, storageDirectory: String
     private var mForcedUpgradeVersion = 0
 
     constructor(context: Context, name: String?, factory: CursorFactory?, version: Int) : this(context,
-        name, null, factory, version) {}
+        name, null, factory, version)
 
     @Synchronized
     override fun getWritableDatabase(): SQLiteDatabase {
@@ -51,7 +51,7 @@ open class AssetHelper(context: Context, name: String?, storageDirectory: String
                     else {
                         if (version > mNewVersion) Log.w(
                             TAG, "Can't downgrade read-only database from version " +
-                                version + " to " + mNewVersion + ": " + db.path)
+                                    version + " to " + mNewVersion + ": " + db.path)
                         onUpgrade(db, version, mNewVersion)
                     }
                     db.version = mNewVersion
@@ -232,7 +232,7 @@ open class AssetHelper(context: Context, name: String?, storageDirectory: String
             b = end
         }
         if (a < baseVersion) return
-        else getUpgradeFilePaths(baseVersion, a, b, paths) // recursive call
+        else getUpgradeFilePaths(baseVersion, a, b, paths)
     }
 
     class SQLiteAssetException : SQLiteException {

@@ -19,18 +19,16 @@ class VersionComparator : Comparator<String?> {
             Log.w(TAG, "could not parse upgrade script file: $file1")
             throw AssetHelper.SQLiteAssetException("Invalid upgrade script file")
         }
-        val v0_from = m0.group(1).toInt()
-        val v1_from = m1.group(1).toInt()
-        val v0_to = m0.group(2).toInt()
-        val v1_to = m1.group(2).toInt()
-        if (v0_from == v1_from) {
-            if (v0_to == v1_to) return 0
-            return if (v0_to < v1_to) -1 else 1
+        val v0From = m0.group(1).toInt()
+        val v1From = m1.group(1).toInt()
+        val v0To = m0.group(2).toInt()
+        val v1To = m1.group(2).toInt()
+        if (v0From == v1From) {
+            if (v0To == v1To) return 0
+            return if (v0To < v1To) -1 else 1
         }
-        return if (v0_from < v1_from) -1 else 1
+        return if (v0From < v1From) -1 else 1
     }
 
-    companion object {
-        private val TAG = AssetHelper::class.java.simpleName
-    }
+    companion object { private val TAG = AssetHelper::class.java.simpleName }
 }
