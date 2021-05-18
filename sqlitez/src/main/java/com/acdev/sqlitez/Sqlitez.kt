@@ -14,6 +14,29 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
 
     companion object {
 
+        fun <T>Context.createDBTable(entity: Class<T>){
+            val db = Sqlitez(this, entity)
+            val item = entity.declaredFields
+            val result = StringBuilder()
+            result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} (_id INTEGER PRIMARY KEY AUTOINCREMENT")
+            for (field in item) {
+                try { result.append(", ${field.name} ${changeToDataDB(field.name::class.java)}") }
+                catch (ex: IllegalAccessException) { println(ex) }
+            }
+            result.append(")")
+            db.writableDatabase.execSQL(result.toString())
+            db.close()
+        }
+
+        private fun <T>changeToDataDB(entity: Class<T>): String{
+            return when(entity.simpleName){
+                "String" -> "TEXT"
+                "Long" -> "TEXT"
+                "BigDecimal" -> "TEXT"
+                "Int" -> "INTEGER"
+                else -> "TEXT"
+            }
+        }
         fun <T> Context.readDBTable(entity: Class<T>): List<T> {
             val db = Sqlitez(this, entity).writableDatabase
             val a : MutableList<T> = ArrayList()
