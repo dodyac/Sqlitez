@@ -2,6 +2,7 @@ package com.acdev.sqlitez
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.DatabaseUtils
 import android.os.Parcel
 import android.os.Parcel.obtain
 import com.google.gson.Gson
@@ -13,8 +14,19 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
 
     companion object {
 
+        fun <T> Context.readDBTable(entity: Class<T>): List<T> {
+            val db = Sqlitez(this, entity).writableDatabase
+            val a : MutableList<T> = ArrayList()
+            val count = DatabaseUtils.longForQuery(db, "SELECT COUNT(*) FROM ${entity.simpleName}", null)
+            for(i in 1..count){
+                val bunny = cupboard().withDatabase(db).query(entity).byId(i)
+                a.add(bunny.get())
+            }
+            return a
+        }
+
         @Suppress("UNCHECKED_CAST")
-        fun <T : Any> Context.readDb(entity: Class<*>, id: Long): T {
+        fun <T> Context.readDB(entity: Class<*>, id: Long): T {
             val db = Sqlitez(this, entity).readableDatabase
             val user = cupboard().withDatabase(db)[entity, id]
             db.close()
@@ -22,19 +34,19 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
         }
 
 
-        fun <T : Any> Context.insertDb(entity: Class<*>, model: T?) {
+        fun <T> Context.insertDB(entity: Class<*>, model: T?) {
             val db = Sqlitez(this, entity).writableDatabase
             cupboard().withDatabase(db).put(model)
             db.close()
         }
 
-        fun Context.deleteDb(entity: Class<*>, id: Long) {
+        fun Context.deleteDB(entity: Class<*>, id: Long) {
             val db = Sqlitez(this, entity).writableDatabase
             cupboard().withDatabase(db).delete(entity, id)
             db.close()
         }
 
-        fun <T : Any> Context.updateDb(entity: Class<*>, model: T?, id: Long) {
+        fun <T> Context.updateDB(entity: Class<*>, model: T?, id: Long) {
             val db = Sqlitez(this, entity).writableDatabase
             val parcel: Parcel = obtain()
             parcel.writeMap(Gson().fromJson(Gson().toJson(model), HashMap::class.java))
