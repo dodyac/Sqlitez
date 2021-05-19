@@ -20,7 +20,7 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             val result = StringBuilder()
             result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} (_id INTEGER PRIMARY KEY AUTOINCREMENT")
             for (field in item) {
-                try { result.append(", ${field.name} ${changeToDataDB(field.name::class.java)}") }
+                try { result.append(", ${field.name} TEXT}") }
                 catch (ex: IllegalAccessException) { println(ex) }
             }
             result.append(")")
@@ -30,9 +30,6 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
 
         private fun <T>changeToDataDB(entity: Class<T>): String{
             return when(entity.simpleName){
-                "String" -> "TEXT"
-                "Long" -> "TEXT"
-                "BigDecimal" -> "TEXT"
                 "Int" -> "INTEGER"
                 else -> "TEXT"
             }
