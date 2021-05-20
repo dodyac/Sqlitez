@@ -29,12 +29,28 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             db.close()
         }
 
+        fun <T>Context.createDBTableDefaultPrimary(entity: Class<T>){
+            val db = Sqlitez(this, entity)
+            val item = entity.declaredFields
+            val result = StringBuilder()
+            result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} (_id INTEGER PRIMARY KEY DEFAULT 1")
+            for (field in item) {
+                try { result.append(", ${field.name} TEXT") }
+                catch (ex: IllegalAccessException) { println(ex) }
+            }
+            result.append(")")
+            db.writableDatabase.execSQL(result.toString())
+            db.close()
+        }
+
         private fun <T>changeToDataDB(entity: Class<T>): String{
             return when(entity.simpleName){
                 "Int" -> "INTEGER"
                 else -> "TEXT"
             }
         }
+
+
         fun <T> Context.readDBTable(entity: Class<T>): List<T> {
             val db = Sqlitez(this, entity).writableDatabase
             val a : MutableList<T> = ArrayList()
