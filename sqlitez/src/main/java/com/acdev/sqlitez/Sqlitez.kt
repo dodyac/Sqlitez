@@ -2,6 +2,7 @@ package com.acdev.sqlitez
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.database.DatabaseUtils
 import android.os.Parcel
 import android.os.Parcel.obtain
@@ -64,6 +65,18 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             val db = Sqlitez(this, entity).writableDatabase
             cupboard().withDatabase(db).delete(entity, id)
             db.close()
+        }
+
+        fun Context.rowDBExist(entity: Class<*>, where: String, equal: String): Boolean {
+            val db = Sqlitez(this, entity).readableDatabase
+            val query = "SELECT * FROM ${entity.simpleName} WHERE $where = $equal"
+            val cursor: Cursor = db.rawQuery(query, null)
+            if (cursor.count <= 0) {
+                cursor.close()
+                return false
+            }
+            cursor.close()
+            return true
         }
 
         fun <T> Context.updateDB(entity: Class<*>, model: T?, id: Long) {
