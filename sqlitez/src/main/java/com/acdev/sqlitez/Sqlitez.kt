@@ -59,6 +59,7 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
                 val bunny = cupboard().withDatabase(db).query(entity).byId(i)
                 a.add(bunny.get())
             }
+            db.close()
             return a
         }
 
@@ -89,9 +90,11 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             val cursor: Cursor = db.rawQuery(query, null)
             if (cursor.count <= 0) {
                 cursor.close()
+                db.close()
                 return false
             }
             cursor.close()
+            db.close()
             return true
         }
 
