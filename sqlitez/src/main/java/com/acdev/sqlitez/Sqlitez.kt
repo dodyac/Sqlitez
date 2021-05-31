@@ -50,7 +50,6 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             }
         }
 
-
         fun <T> Context.readDBTable(entity: Class<T>): List<T> {
             val db = Sqlitez(this, entity).writableDatabase
             val a : MutableList<T> = ArrayList()
@@ -63,8 +62,7 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             return a
         }
 
-        @Suppress("UNCHECKED_CAST")
-        fun <T> Context.readDB(entity: Class<*>, id: Long): T {
+        fun <T> Context.readDB(entity: Class<T>, id: Long): T {
             val db = Sqlitez(this, entity).readableDatabase
             val user = cupboard().withDatabase(db)[entity, id]
             db.close()
@@ -72,7 +70,7 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
         }
 
 
-        fun <T> Context.insertDB(entity: Class<*>, model: T?) {
+        fun <T> Context.insertDB(entity: Class<T>, model: T?) {
             val db = Sqlitez(this, entity).writableDatabase
             cupboard().withDatabase(db).put(model)
             db.close()
@@ -98,12 +96,21 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             return true
         }
 
-        fun <T> Context.updateDB(entity: Class<*>, model: T?, id: Long) {
-            val db = Sqlitez(this, entity).writableDatabase
-            val parcel: Parcel = obtain()
-            parcel.writeMap(Gson().fromJson(Gson().toJson(model), HashMap::class.java))
-            parcel.setDataPosition(0)
-            cupboard().withDatabase(db).update(entity, ContentValues.CREATOR.createFromParcel(parcel), "_id = $id", null)
+        fun <T>Context.updateDB(entity: Class<T>, model: T?){
+            val json = Gson().toJson(model).replace(":", "=").removePrefix("{").removeSuffix("}")
+            val db = AssetHelper(this, "data.db", null, 1).writableDatabase
+            val sql = "UPDATE ${entity.simpleName} SET $json WHERE _id=1"
+            println(sql)
+            db.execSQL(sql)
+            db.close()
+        }
+        
+        fun <T>Context.updateDBById(entity: Class<T>, model: T?, id: Long){
+            val json = Gson().toJson(model).replace(":", "=").removePrefix("{").removeSuffix("}")
+            val db = AssetHelper(this, "data.db", null, 1).writableDatabase
+            val sql = "UPDATE ${entity.simpleName} SET $json WHERE _id=$id"
+            println(sql)
+            db.execSQL(sql)
             db.close()
         }
     }
