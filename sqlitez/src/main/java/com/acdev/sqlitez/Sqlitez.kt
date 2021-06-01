@@ -1,11 +1,8 @@
 package com.acdev.sqlitez
 
-import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.database.DatabaseUtils
-import android.os.Parcel
-import android.os.Parcel.obtain
 import com.google.gson.Gson
 import nl.qbusict.cupboard.CupboardFactory.cupboard
 
@@ -76,13 +73,13 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             db.close()
         }
 
-        fun Context.deleteDB(entity: Class<*>, id: Long) {
+        fun <T> Context.deleteDB(entity: Class<T>, id: Long) {
             val db = Sqlitez(this, entity).writableDatabase
             cupboard().withDatabase(db).delete(entity, id)
             db.close()
         }
 
-        fun Context.rowDBExist(entity: Class<*>, where: String, equal: String): Boolean {
+        fun <T> Context.rowDBExist(entity: Class<T>, where: String, equal: String): Boolean {
             val db = Sqlitez(this, entity).readableDatabase
             val query = "SELECT * FROM ${entity.simpleName} WHERE $where = $equal"
             val cursor: Cursor = db.rawQuery(query, null)
@@ -96,18 +93,18 @@ open class Sqlitez(context: Context, entity: Class<*>) : AssetHelper(context, "d
             return true
         }
 
-        fun <T>Context.updateDB(entity: Class<T>, model: T?){
+        fun <T> Context.updateDBDefaultPrimary(entity: Class<T>, model: T?){
             val json = Gson().toJson(model).replace(":", "=").removePrefix("{").removeSuffix("}")
-            val db = AssetHelper(this, "data.db", null, 1).writableDatabase
+            val db = Sqlitez(this, entity).writableDatabase
             val sql = "UPDATE ${entity.simpleName} SET $json WHERE _id=1"
             println(sql)
             db.execSQL(sql)
             db.close()
         }
         
-        fun <T>Context.updateDBById(entity: Class<T>, model: T?, id: Long){
+        fun <T> Context.updateDB(entity: Class<T>, model: T, id: Long){
             val json = Gson().toJson(model).replace(":", "=").removePrefix("{").removeSuffix("}")
-            val db = AssetHelper(this, "data.db", null, 1).writableDatabase
+            val db = Sqlitez(this, entity).writableDatabase
             val sql = "UPDATE ${entity.simpleName} SET $json WHERE _id=$id"
             println(sql)
             db.execSQL(sql)
