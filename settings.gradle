@@ -1,3 +1,0 @@
-include ':sqlitez'
-include ':app'
-rootProject.name = "Sqlitez"
