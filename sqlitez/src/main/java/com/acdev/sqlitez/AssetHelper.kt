@@ -126,10 +126,8 @@ open class AssetHelper(context: Context, name: String?, storageDirectory: String
                 Log.w(TAG, "processing upgrade: $path")
                 val `is` = mContext.assets.open(path)
                 val sql = Utils.convertStreamToString(`is`)
-                if (sql != null) {
-                    val cmds = Utils.splitSqlScript(sql, ';')
-                    for (cmd in cmds) { if (cmd.trim { it <= ' ' }.isNotEmpty()) db.execSQL(cmd) }
-                }
+                val cmds = Utils.splitSqlScript(sql, ';')
+                for (cmd in cmds) { if (cmd.trim { it <= ' ' }.isNotEmpty()) db.execSQL(cmd) }
             } catch (e: IOException) { e.printStackTrace() }
         }
         Log.w(TAG, "Successfully upgraded database $mName from version $oldVersion to $newVersion")
