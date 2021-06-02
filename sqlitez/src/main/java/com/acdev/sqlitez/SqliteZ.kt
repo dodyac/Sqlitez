@@ -37,7 +37,6 @@ open class SqliteZ(context: Context, entity: Class<*>) : SQLiteOpenHelper(contex
                 result.append(")")
                 db.writableDatabase.execSQL(result.toString())
                 db.close()
-                Log.v(TAG, "Table ${entity.simpleName} Successfully Created")
             } catch (ex: IOException){ Log.e(TAG, "Table ${entity.simpleName} Failed to Create \n${ex.message}") }
         }
 
@@ -54,7 +53,6 @@ open class SqliteZ(context: Context, entity: Class<*>) : SQLiteOpenHelper(contex
                 result.append(")")
                 db.writableDatabase.execSQL(result.toString())
                 db.close()
-                Log.v(TAG, "Table Created ${entity.simpleName} Successfully Created")
             } catch (ex: IOException){ Log.e(TAG, "Table ${entity.simpleName} Failed to Create \n${ex.message}") }
         }
 
@@ -100,7 +98,7 @@ open class SqliteZ(context: Context, entity: Class<*>) : SQLiteOpenHelper(contex
                 CupboardFactory.cupboard().withDatabase(db).put(model)
                 db.close()
                 Log.v(TAG, "Successfully Insert Data ${Gson().toJson(model)}")
-            } catch (ex: IOException){ Log.e(TAG, "Failed to Insert Data ${ex.message.toString()}") }
+            } catch (ex: IOException){ Log.e(TAG, "Failed to Insert Data \n${ex.message.toString()}") }
         }
 
         fun <T>Context.deleteDB(entity: Class<T>, id: Long) {
@@ -108,8 +106,8 @@ open class SqliteZ(context: Context, entity: Class<*>) : SQLiteOpenHelper(contex
                 val db = SqliteZ(this, entity).writableDatabase
                 CupboardFactory.cupboard().withDatabase(db).delete(entity, id)
                 db.close()
-                Log.v(TAG, "Successfully Delete Table ${entity.simpleName}")
-            } catch (ex: IOException){ Log.e(TAG, "Failed to Delete Table ${ex.message.toString()}") }
+                Log.v(TAG, "Successfully Delete Data From ${entity.simpleName} Where _id=$id")
+            } catch (ex: IOException){ Log.e(TAG, "Failed to Delete \n${ex.message.toString()}") }
         }
 
         fun <T>Context.rowDBExist(entity: Class<T>, where: String, equal: String): Boolean {
@@ -120,12 +118,12 @@ open class SqliteZ(context: Context, entity: Class<*>) : SQLiteOpenHelper(contex
                 if (cursor.count <= 0) {
                     cursor.close()
                     db.close()
-                    Log.v(TAG, "Database isn't Exist ${entity.simpleName} Where $where")
+                    Log.v(TAG, "Database isn't Exist ${entity.simpleName} Where $where = $equal")
                     return false
                 }
                 cursor.close()
                 db.close()
-                Log.v(TAG, "Database Exist ${entity.simpleName} Where $where")
+                Log.v(TAG, "Database Exist ${entity.simpleName} Where $where = $equal")
                 return true
             } catch (ex: IOException){
                 Log.e(TAG, "Cannot check Database ${ex.message.toString()}")
