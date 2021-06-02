@@ -5,8 +5,10 @@ import android.database.Cursor
 import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.util.Log
 import com.google.gson.Gson
 import nl.qbusict.cupboard.CupboardFactory
+import java.io.IOException
 
 open class SqliteZBeta(context: Context, entity: Class<*>) : SQLiteOpenHelper(context, "data.db", null, 1) {
 
@@ -20,32 +22,40 @@ open class SqliteZBeta(context: Context, entity: Class<*>) : SQLiteOpenHelper(co
 
     companion object {
 
+        private const val TAG = "SqliteZ"
+
         fun <T>Context.createDBTable(entity: Class<T>){
-            val db = SqliteZBeta(this, entity)
-            val item = entity.declaredFields
-            val result = StringBuilder()
-            result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} (_id INTEGER PRIMARY KEY AUTOINCREMENT")
-            for (field in item) {
-                try { result.append(", ${field.name} TEXT") }
-                catch (ex: IllegalAccessException) { println(ex) }
-            }
-            result.append(")")
-            db.writableDatabase.execSQL(result.toString())
-            db.close()
+            try {
+                val db = SqliteZBeta(this, entity)
+                val item = entity.declaredFields
+                val result = StringBuilder()
+                result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} (_id INTEGER PRIMARY KEY AUTOINCREMENT")
+                for (field in item) {
+                    try { result.append(", ${field.name} TEXT") }
+                    catch (ex: IllegalAccessException) { println(ex) }
+                }
+                result.append(")")
+                db.writableDatabase.execSQL(result.toString())
+                db.close()
+                Log.v(TAG, "Table Created $result")
+            } catch (ex: IOException){ Log.e(TAG, "Table Failed to Create ${ex.message}") }
         }
 
         fun <T>Context.createDBTableDefaultPrimary(entity: Class<T>){
-            val db = SqliteZBeta(this, entity)
-            val item = entity.declaredFields
-            val result = StringBuilder()
-            result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} (_id INTEGER PRIMARY KEY DEFAULT 1")
-            for (field in item) {
-                try { result.append(", ${field.name} TEXT") }
-                catch (ex: IllegalAccessException) { println(ex) }
-            }
-            result.append(")")
-            db.writableDatabase.execSQL(result.toString())
-            db.close()
+            try {
+                val db = SqliteZBeta(this, entity)
+                val item = entity.declaredFields
+                val result = StringBuilder()
+                result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} (_id INTEGER PRIMARY KEY DEFAULT 1")
+                for (field in item) {
+                    try { result.append(", ${field.name} TEXT") }
+                    catch (ex: IllegalAccessException) { println(ex) }
+                }
+                result.append(")")
+                db.writableDatabase.execSQL(result.toString())
+                db.close()
+                Log.v(TAG, "Table Created $result")
+            } catch (ex: IOException){ Log.e(TAG, "Table Failed to Create ${ex.message}") }
         }
 
         private fun <T>changeToDataDB(entity: Class<T>): String{
@@ -64,12 +74,15 @@ open class SqliteZBeta(context: Context, entity: Class<*>) : SQLiteOpenHelper(co
                 a.add(bunny.get())
             }
             db.close()
+            Log.v(TAG, Gson().toJson(a))
             return a
         }
+
         fun <T>Context.readDBDefaultPrimary(entity: Class<T>): T {
             val db = SqliteZBeta(this, entity).readableDatabase
             val user = CupboardFactory.cupboard().withDatabase(db)[entity, 1L]
             db.close()
+            Log.v(TAG, Gson().toJson(user))
             return user as T
         }
 
@@ -77,52 +90,75 @@ open class SqliteZBeta(context: Context, entity: Class<*>) : SQLiteOpenHelper(co
             val db = SqliteZBeta(this, entity).readableDatabase
             val user = CupboardFactory.cupboard().withDatabase(db)[entity, id]
             db.close()
+            Log.v(TAG, Gson().toJson(user))
             return user as T
         }
 
-
         fun <T>Context.insertDB(entity: Class<T>, model: T) {
-            val db = SqliteZBeta(this, entity).writableDatabase
-            CupboardFactory.cupboard().withDatabase(db).put(model)
-            db.close()
+            try {
+                val db = SqliteZBeta(this, entity).writableDatabase
+                CupboardFactory.cupboard().withDatabase(db).put(model)
+                db.close()
+                Log.v(TAG, "Successfully Insert Data ${Gson().toJson(model)}")
+            } catch (ex: IOException){ Log.e(TAG, "Failed to Insert Data ${ex.message.toString()}") }
         }
 
         fun <T>Context.deleteDB(entity: Class<T>, id: Long) {
-            val db = SqliteZBeta(this, entity).writableDatabase
-            CupboardFactory.cupboard().withDatabase(db).delete(entity, id)
-            db.close()
+            try {
+                val db = SqliteZBeta(this, entity).writableDatabase
+                CupboardFactory.cupboard().withDatabase(db).delete(entity, id)
+                db.close()
+                Log.v(TAG, "Successfully Delete Table ${entity.simpleName}")
+            } catch (ex: IOException){ Log.e(TAG, "Failed to Delete Table ${ex.message.toString()}") }
         }
 
         fun <T>Context.rowDBExist(entity: Class<T>, where: String, equal: String): Boolean {
-            val db = SqliteZBeta(this, entity).readableDatabase
-            val query = "SELECT * FROM ${entity.simpleName} WHERE $where = $equal"
-            val cursor: Cursor = db.rawQuery(query, null)
-            if (cursor.count <= 0) {
+            try {
+                val db = SqliteZBeta(this, entity).readableDatabase
+                val query = "SELECT * FROM ${entity.simpleName} WHERE $where = $equal"
+                val cursor: Cursor = db.rawQuery(query, null)
+                if (cursor.count <= 0) {
+                    cursor.close()
+                    db.close()
+                    Log.v(TAG, "Database isn't Exist ${entity.simpleName} Where $where")
+                    return false
+                }
                 cursor.close()
                 db.close()
+                Log.v(TAG, "Database Exist ${entity.simpleName} Where $where")
+                return true
+            } catch (ex: IOException){
+                Log.e(TAG, "Cannot check Database ${ex.message.toString()}")
                 return false
             }
-            cursor.close()
-            db.close()
-            return true
         }
 
         fun <T>Context.updateDB(entity: Class<T>, model: T){
-            val json = Gson().toJson(model).replace(":", "=").removePrefix("{").removeSuffix("}")
-            val db = SqliteZBeta(this, entity).writableDatabase
-            val sql = "UPDATE ${entity.simpleName} SET $json WHERE _id=1"
-            println(sql)
-            db.execSQL(sql)
-            db.close()
+            try {
+                val json = Gson().toJson(model).replace(":", "=").removePrefix("{").removeSuffix("}")
+                val db = SqliteZBeta(this, entity).writableDatabase
+                val sql = "UPDATE ${entity.simpleName} SET $json WHERE _id=1"
+                println(sql)
+                db.execSQL(sql)
+                db.close()
+                Log.v(TAG, "Successfully update data Table ${entity.simpleName} with ${Gson().toJson(model)}")
+            } catch (ex: IOException){
+                Log.e(TAG, "Failed update data Table ${entity.simpleName} with ${Gson().toJson(model)} \n with Error ${ex.message.toString()}")
+            }
         }
 
         fun <T>Context.updateDBDefaultPrimary(entity: Class<T>, model: T, id: Long){
-            val json = Gson().toJson(model).replace(":", "=").removePrefix("{").removeSuffix("}")
-            val db = SqliteZBeta(this, entity).writableDatabase
-            val sql = "UPDATE ${entity.simpleName} SET $json WHERE _id=$id"
-            println(sql)
-            db.execSQL(sql)
-            db.close()
+            try {
+                val json = Gson().toJson(model).replace(":", "=").removePrefix("{").removeSuffix("}")
+                val db = SqliteZBeta(this, entity).writableDatabase
+                val sql = "UPDATE ${entity.simpleName} SET $json WHERE _id=$id"
+                println(sql)
+                db.execSQL(sql)
+                db.close()
+                Log.v(TAG, "Successfully update data Table ${entity.simpleName} with ${Gson().toJson(model)}")
+            } catch (ex: IOException){
+                Log.e(TAG, "Failed update data Table ${entity.simpleName} with ${Gson().toJson(model)} \n with Error ${ex.message.toString()}")
+            }
         }
     }
 }
