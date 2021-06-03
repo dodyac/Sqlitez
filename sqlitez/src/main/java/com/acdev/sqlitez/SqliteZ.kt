@@ -9,16 +9,63 @@ import android.util.Log
 import com.google.gson.Gson
 import nl.qbusict.cupboard.CupboardFactory
 import java.io.IOException
+import java.io.InputStream
+import java.util.*
+import kotlin.collections.ArrayList
 
-open class SqliteZ(context: Context, entity: Class<*>) : SQLiteOpenHelper(context, "data.db", null, 1) {
+open class SqliteZ(val context: Context, entity: Class<*>) : SQLiteOpenHelper(context, "data.db", null, 1) {
 
     init { CupboardFactory.cupboard().register(entity) }
 
     override fun onCreate(db: SQLiteDatabase?) {}
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-        onCreate(db)
+        Log.w(TAG, "Upgrading database from version $oldVersion to $newVersion...")
+        val paths = java.util.ArrayList<String>()
+        getUpgradeFilePaths(oldVersion, newVersion - 1, newVersion, paths)
+        if (paths.isEmpty()) {
+            Log.e(TAG, "no upgrade script path from $oldVersion to $newVersion")
+            throw AssetHelper.SQLiteAssetException("no upgrade script path from $oldVersion to $newVersion")
+        }
+        Collections.sort(paths, VersionComparator())
+        for (path in paths) {
+            try {
+                Log.w(TAG, "processing upgrade: $path")
+                val `is` = context.assets.open(path)
+                val sql = Utils.convertStreamToString(`is`)
+                val cmds = Utils.splitSqlScript(sql, ';')
+                for (cmd in cmds) { if (cmd.trim { it <= ' ' }.isNotEmpty()) db?.execSQL(cmd) }
+            } catch (e: IOException) { e.printStackTrace() }
+        }
+        Log.w(TAG, "Successfully upgraded database from version $oldVersion to $newVersion")
     }
+
+//    private fun getUpgradeSQLStream(oldVersion: Int, newVersion: Int): InputStream? {
+//        val path = String.format(mUpgradePathFormat, oldVersion, newVersion)
+//        return try { context.assets.open(path) }
+//        catch (e: IOException) {
+//            Log.w(TAG, "missing database upgrade script: $path")
+//            null
+//        }
+//    }
+//
+//    private fun getUpgradeFilePaths(baseVersion: Int, start: Int, end: Int, paths: java.util.ArrayList<String>) {
+//        val a: Int
+//        val b: Int
+//        var `is` = getUpgradeSQLStream(start, end)
+//        if (`is` != null) {
+//            val path = String.format(mUpgradePathFormat, start, end)
+//            paths.add(path)
+//            a = start - 1
+//            b = start
+//            `is` = null
+//        } else {
+//            a = start - 1
+//            b = end
+//        }
+//        if (a < baseVersion) return
+//        else getUpgradeFilePaths(baseVersion, a, b, paths)
+//    }
 
     companion object {
 
