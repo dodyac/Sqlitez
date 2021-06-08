@@ -22,7 +22,7 @@ open class SqliteZ(val context: Context, entity: Class<*>) : SQLiteOpenHelper(co
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
         Log.w(TAG, "Upgrading database from version $oldVersion to $newVersion...")
         val paths = java.util.ArrayList<String>()
-        getUpgradeFilePaths(oldVersion, newVersion - 1, newVersion, paths)
+//        getUpgradeFilePaths(oldVersion, newVersion - 1, newVersion, paths)
         if (paths.isEmpty()) {
             Log.e(TAG, "no upgrade script path from $oldVersion to $newVersion")
             throw AssetHelper.SQLiteAssetException("no upgrade script path from $oldVersion to $newVersion")
