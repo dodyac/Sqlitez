@@ -16,9 +16,9 @@ open class SqliteZAsset(context: Context, entity: Class<*>) : AssetHelper(contex
             val db = SqliteZAsset(this, entity)
             val item = entity.declaredFields
             val result = StringBuilder()
-            result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} ")
+            result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} (_id INTEGER PRIMARY KEY AUTOINCREMENT")
             for (field in item) {
-                try { if(field.name == "_id") "(${field.name} INTEGER PRIMARY KEY AUTOINCREMENT" else result.append(", ${field.name} TEXT") }
+                try { if(field.name != "_id") result.append(", ${field.name} TEXT") }
                 catch (ex: IllegalAccessException) { println(ex) }
             }
             result.append(")")
