@@ -12,6 +12,20 @@ open class SqliteZAsset(context: Context, entity: Class<*>) : AssetHelper(contex
 
     companion object {
 
+        fun <T>Context.createDBTableWithId(entity: Class<T>){
+            val db = SqliteZAsset(this, entity)
+            val item = entity.declaredFields
+            val result = StringBuilder()
+            result.append("CREATE TABLE IF NOT EXISTS ${entity.simpleName} ")
+            for (field in item) {
+                try { if(field.name == "_id") "(${field.name} INTEGER PRIMARY KEY AUTOINCREMENT" else result.append(", ${field.name} TEXT") }
+                catch (ex: IllegalAccessException) { println(ex) }
+            }
+            result.append(")")
+            db.writableDatabase.execSQL(result.toString())
+            db.close()
+        }
+
         fun <T>Context.createDBTable(entity: Class<T>){
             val db = SqliteZAsset(this, entity)
             val item = entity.declaredFields
