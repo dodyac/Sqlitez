@@ -1,4 +1,4 @@
-package com.acdev.sqlitez
+package com.acxdev.sqlitez
 
 import org.junit.Test
 

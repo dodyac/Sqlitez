@@ -1,4 +1,4 @@
-package com.acdev.sqlitez
+package com.acxdev.sqlitez
 
 import android.content.Context
 import android.database.Cursor
@@ -9,7 +9,6 @@ import android.util.Log
 import com.google.gson.Gson
 import nl.qbusict.cupboard.CupboardFactory
 import java.io.IOException
-import java.io.InputStream
 import java.util.*
 import kotlin.collections.ArrayList
 
