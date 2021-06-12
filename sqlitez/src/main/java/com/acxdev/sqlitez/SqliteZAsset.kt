@@ -63,12 +63,7 @@ open class SqliteZAsset(context: Context, entity: Class<*>) : AssetHelper(contex
 
         fun <T> Context.readDBTable(entity: Class<T>): List<T> {
             val db = SqliteZAsset(this, entity).writableDatabase
-            val a : MutableList<T> = ArrayList()
-            val count = DatabaseUtils.longForQuery(db, "SELECT COUNT(*) FROM ${entity.simpleName}", null)
-            for(i in 1..count){
-                val bunny = cupboard().withDatabase(db).query(entity).byId(i)
-                a.add(bunny.get())
-            }
+            val a : MutableList<T> = cupboard().withDatabase(db).query(entity).list()
             db.close()
             return a
         }
