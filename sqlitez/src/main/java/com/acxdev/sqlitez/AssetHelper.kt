@@ -12,8 +12,13 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.*
 
-open class AssetHelper(context: Context, name: String?, storageDirectory: String?, factory: CursorFactory?,
-                       version: Int) : SQLiteOpenHelper(context, name, factory, version) {
+open class AssetHelper(
+    context: Context,
+    name: String?,
+    storageDirectory: String?,
+    factory: CursorFactory?,
+    version: Int
+) : SQLiteOpenHelper(context, name, factory, version) {
 
     private val mContext: Context
     private val mName: String?
