@@ -9,7 +9,9 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
 internal object Utils {
+
     private val TAG = AssetHelper::class.java.simpleName
+
     fun splitSqlScript(script: String, delim: Char): List<String> {
         val statements: MutableList<String> = ArrayList()
         var sb = StringBuilder()

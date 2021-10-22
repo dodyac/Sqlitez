@@ -3,7 +3,6 @@ package com.acxdev.sqlitez
 import android.content.Context
 import android.database.Cursor
 import android.util.Log
-import com.acxdev.sqlitez.SqliteZ.Companion.sqliteZDeleteById
 import com.google.gson.Gson
 import nl.qbusict.cupboard.CupboardFactory.cupboard
 
@@ -81,6 +80,30 @@ open class SqliteZ(
                 Log.v(TAG, "Successfully Delete Data From ${entity.simpleName} Where _id=$id")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to Delete")
+                e.printStackTrace()
+            }
+        }
+
+        fun <T>Context.sqliteZDelete(entity: Class<T>, model: T) {
+            try {
+                val db = SqliteZ(this, entity).writableDatabase
+                cupboard().withDatabase(db).delete(model)
+                db.close()
+                Log.v(TAG, "Successfully Delete Data From ${entity.simpleName} Where ${Gson().toJson(model)}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to Delete")
+                e.printStackTrace()
+            }
+        }
+
+        fun <T>Context.sqliteZDropTable(entity: Class<T>) {
+            try {
+                val db = SqliteZ(this, entity).writableDatabase
+                cupboard().withDatabase(db).delete(entity, null)
+                db.close()
+                Log.v(TAG, "Successfully Drop Table ${entity.simpleName}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to Drop Table")
                 e.printStackTrace()
             }
         }

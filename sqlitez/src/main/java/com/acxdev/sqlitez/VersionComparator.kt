@@ -30,5 +30,7 @@ class VersionComparator : Comparator<String?> {
         return if (v0From < v1From) -1 else 1
     }
 
-    companion object { private val TAG = AssetHelper::class.java.simpleName }
+    companion object {
+        private val TAG = AssetHelper::class.java.simpleName
+    }
 }
