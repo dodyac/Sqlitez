@@ -38,13 +38,14 @@ open class SqliteZ(
                 result.append(")")
                 db.writableDatabase.execSQL(result.toString())
                 db.close()
+                Log.d(TAG, "Table ${entity.simpleName} Successfully Created")
             } catch (e: Exception) {
                 Log.e(TAG, "Table ${entity.simpleName} Failed to Create")
                 e.printStackTrace()
             }
         }
 
-        fun <T>Context.sqLiteZCreateTables(vararg entity: Class<T>) {
+        fun Context.sqLiteZCreateTables(vararg entity: Class<*>) {
             try {
                 entity.forEach {
                     val db = SqliteZ(this, it)
