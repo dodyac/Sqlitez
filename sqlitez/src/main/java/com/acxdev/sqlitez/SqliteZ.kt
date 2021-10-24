@@ -19,7 +19,7 @@ open class SqliteZ(
 
         private const val TAG = "SqliteZ"
 
-        fun <T>Context.sqLiteZCreateTable(entity: Class<T>){
+        fun <T>Context.sqLiteZCreateTable(entity: Class<T>) {
             try {
                 val db = SqliteZ(this, entity)
                 val item = entity.declaredFields
@@ -40,6 +40,34 @@ open class SqliteZ(
                 db.close()
             } catch (e: Exception) {
                 Log.e(TAG, "Table ${entity.simpleName} Failed to Create")
+                e.printStackTrace()
+            }
+        }
+
+        fun <T>Context.sqLiteZCreateTables(vararg entity: Class<T>) {
+            try {
+                entity.forEach {
+                    val db = SqliteZ(this, it)
+                    val item = it.declaredFields
+                    val result = StringBuilder()
+                    result.append("CREATE TABLE IF NOT EXISTS ${it.simpleName} (_id INTEGER PRIMARY KEY AUTOINCREMENT")
+                    for (field in item) {
+                        try {
+                            if(field.name != "_id") {
+                                result.append(", ${field.name} TEXT")
+                            }
+                        }
+                        catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                    result.append(")")
+                    db.writableDatabase.execSQL(result.toString())
+                    db.close()
+                    Log.d(TAG, "Table ${it.simpleName} Successfully Created")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Tables Failed to Create")
                 e.printStackTrace()
             }
         }
