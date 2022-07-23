@@ -73,23 +73,27 @@ open class SqliteZ(
             }
         }
 
-        fun <T> Context.sqLiteZSelectTable(entity: Class<T>): List<T> {
+        fun <T> Context.sqLiteZSelectTable(entity: Class<T>, shouldPrintLog: Boolean = false): List<T> {
             val db = SqliteZ(this, entity).writableDatabase
             val databaseList = cupboard().withDatabase(db).query(entity).list()
             db.close()
-            Log.v(TAG, Gson().toJson(databaseList))
+            if(shouldPrintLog) {
+                Log.v(TAG, Gson().toJson(databaseList))
+            }
             return databaseList
         }
 
-        fun <T>Context.sqLiteZGetById(entity: Class<T>, id: Long): T {
+        fun <T>Context.sqLiteZGetById(entity: Class<T>, id: Long, shouldPrintLog: Boolean = false): T {
             val db = SqliteZ(this, entity).readableDatabase
             val user = cupboard().withDatabase(db)[entity, id]
             db.close()
-            Log.v(TAG, Gson().toJson(user))
+            if(shouldPrintLog) {
+                Log.v(TAG, Gson().toJson(user))
+            }
             return user as T
         }
 
-        fun <T>Context.sqLiteZInsertInto(entity: Class<T>, model: T) {
+        fun <T>Context.sqLiteZInsert(entity: Class<T>, model: T) {
             try {
                 val db = SqliteZ(this, entity).writableDatabase
                 cupboard().withDatabase(db).put(model)
@@ -125,7 +129,7 @@ open class SqliteZ(
             }
         }
 
-        fun <T>Context.sqliteZDropTable(entity: Class<T>) {
+        fun <T>Context.sqliteZDrop(entity: Class<T>) {
             try {
                 val db = SqliteZ(this, entity).writableDatabase
                 cupboard().withDatabase(db).delete(entity, null)
@@ -137,19 +141,7 @@ open class SqliteZ(
             }
         }
 
-        fun <T>Context.sqliteZUpdate(entity: Class<T>, model: T) {
-            try {
-                val db = SqliteZ(this, entity).writableDatabase
-                cupboard().withDatabase(db).put(model)
-                db.close()
-                Log.v(TAG, "Successfully update data Table ${entity.simpleName} with ${Gson().toJson(model)}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed update data Table ${entity.simpleName} with ${Gson().toJson(model)}")
-                e.printStackTrace()
-            }
-        }
-
-        fun <T>Context.sqLiteZIsRowExist(entity: Class<T>, where: String, equal: String): Boolean {
+        fun <T>Context.sqLiteZIsExist(entity: Class<T>, where: String, equal: String): Boolean {
             return try {
                 val db = SqliteZ(this, entity).readableDatabase
                 val query = "SELECT * FROM ${entity.simpleName} WHERE $where = '$equal'"
