@@ -9,7 +9,7 @@ import nl.qbusict.cupboard.CupboardFactory.cupboard
 open class SqliteZ(
     context: Context,
     entity: Class<*>
-) : AssetHelper(context, "data.db", null, 1) {
+) : AssetHelper(context, DatabaseNameHolder.dbName, null, 1) {
 
     init {
         cupboard().register(entity)
