@@ -6,6 +6,7 @@ import android.util.Log
 import com.google.gson.Gson
 import nl.qbusict.cupboard.CupboardFactory.cupboard
 
+@Deprecated("use SqliteX instead.", ReplaceWith("SqliteX(context)"))
 open class SqliteZ(
     context: Context,
     entity: Class<*>
@@ -19,6 +20,7 @@ open class SqliteZ(
 
         private const val TAG = "SqliteZ"
 
+        @Deprecated("use on SqliteX whenTableCreated instead.")
         fun <T>Context.sqLiteZCreateTable(entity: Class<T>) {
             try {
                 val db = SqliteZ(this, entity)
@@ -45,6 +47,7 @@ open class SqliteZ(
             }
         }
 
+        @Deprecated("use on SqliteX whenTableCreated instead.")
         fun Context.sqLiteZCreateTables(vararg entity: Class<*>) {
             try {
                 entity.forEach {
@@ -73,6 +76,7 @@ open class SqliteZ(
             }
         }
 
+        @Deprecated("use on SqliteX getAll instead.")
         fun <T> Context.sqLiteZSelectTable(entity: Class<T>, shouldPrintLog: Boolean = false): List<T> {
             val db = SqliteZ(this, entity).writableDatabase
             val databaseList = cupboard().withDatabase(db).query(entity).list()
@@ -83,6 +87,7 @@ open class SqliteZ(
             return databaseList
         }
 
+        @Deprecated("use on SqliteX getById instead.")
         fun <T>Context.sqLiteZGetById(entity: Class<T>, id: Long, shouldPrintLog: Boolean = false): T {
             val db = SqliteZ(this, entity).readableDatabase
             val user = cupboard().withDatabase(db)[entity, id]
@@ -93,6 +98,7 @@ open class SqliteZ(
             return user as T
         }
 
+        @Deprecated("use on SqliteX insert instead.")
         fun <T>Context.sqLiteZInsert(entity: Class<T>, model: T) {
             try {
                 val db = SqliteZ(this, entity).writableDatabase
@@ -105,6 +111,7 @@ open class SqliteZ(
             }
         }
 
+        @Deprecated("use on SqliteX delete instead.")
         fun <T>Context.sqliteZDeleteById(entity: Class<T>, id: Long) {
             try {
                 val db = SqliteZ(this, entity).writableDatabase
@@ -117,6 +124,7 @@ open class SqliteZ(
             }
         }
 
+        @Deprecated("use on SqliteX delete instead.")
         fun <T>Context.sqliteZDelete(entity: Class<T>, model: T) {
             try {
                 val db = SqliteZ(this, entity).writableDatabase
@@ -129,6 +137,7 @@ open class SqliteZ(
             }
         }
 
+        @Deprecated("use on SqliteX deleteAll instead.")
         fun <T>Context.sqliteZDrop(entity: Class<T>) {
             try {
                 val db = SqliteZ(this, entity).writableDatabase
