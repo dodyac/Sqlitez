@@ -16,7 +16,10 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 class SqliteX(context: Context)
     : SQLiteOpenHelper(context, DatabaseNameHolder.dbName, null, 1) {
@@ -69,24 +72,10 @@ class SqliteX(context: Context)
             val cursor = readableDatabase.rawQuery(sql, null)
 
             try {
-                val constructor = entity.primaryConstructor
                 while (cursor.moveToNext()) {
-                    val args = entity.getFields(true).map { field ->
-                        val columnIndex = cursor.getColumnIndex(field.name)
-
-                        when (field.returnType.javaType) {
-                            Int::class.java, java.lang.Integer::class.java -> cursor.getIntOrNull(columnIndex)
-                            String::class.java -> cursor.getString(columnIndex)
-                            Double::class.java -> cursor.getDoubleOrNull(columnIndex)
-                            Long::class.java -> cursor.getLongOrNull(columnIndex)
-                            Float::class.java -> cursor.getFloatOrNull(columnIndex)
-                            Blob::class.java -> cursor.getBlobOrNull(columnIndex)
-                            else -> cursor.getString(columnIndex)
-                        }
-                    }.toTypedArray()
-
-                    val item = constructor?.call(*args)
-                    items.add(item as T)
+                    cursor?.getArgs(entity)?.let {
+                        items.add(it)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Incompatible Data Type")
@@ -122,22 +111,7 @@ class SqliteX(context: Context)
 
             try {
                 if (cursor.moveToFirst()) {
-                    val args = entity.getFields(true).map { field ->
-                        val columnIndex = cursor.getColumnIndex(field.name)
-
-                        when (field.returnType.javaType) {
-                            Int::class.java, java.lang.Integer::class.java -> cursor.getIntOrNull(columnIndex)
-                            String::class.java -> cursor.getString(columnIndex)
-                            Double::class.java -> cursor.getDoubleOrNull(columnIndex)
-                            Long::class.java -> cursor.getLongOrNull(columnIndex)
-                            Float::class.java -> cursor.getFloatOrNull(columnIndex)
-                            Blob::class.java -> cursor.getBlobOrNull(columnIndex)
-                            else -> cursor.getString(columnIndex)
-                        }
-                    }.toTypedArray()
-
-                    val constructor = entity.primaryConstructor
-                    item = constructor?.call(*args)
+                    item = cursor.getArgs(entity)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Incompatible Data Type")
@@ -160,22 +134,7 @@ class SqliteX(context: Context)
 
             try {
                 if (cursor.moveToFirst()) {
-                    val args = entity.getFields(true).map { field ->
-                        val columnIndex = cursor.getColumnIndex(field.name)
-
-                        when (field.returnType.javaType) {
-                            Int::class.java, java.lang.Integer::class.java -> cursor.getIntOrNull(columnIndex)
-                            String::class.java -> cursor.getString(columnIndex)
-                            Double::class.java -> cursor.getDoubleOrNull(columnIndex)
-                            Long::class.java -> cursor.getLongOrNull(columnIndex)
-                            Float::class.java -> cursor.getFloatOrNull(columnIndex)
-                            Blob::class.java -> cursor.getBlobOrNull(columnIndex)
-                            else -> cursor.getString(columnIndex)
-                        }
-                    }.toTypedArray()
-
-                    val constructor = entity.primaryConstructor
-                    item = constructor?.call(*args)
+                    item = cursor.getArgs(entity)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Incompatible Data Type")
@@ -190,6 +149,7 @@ class SqliteX(context: Context)
 
     inline fun <reified T: Any> insert(model: T) {
         val entity = T::class
+        val gson = Gson()
 
         entity.whenTableCreated {
             val values = ContentValues()
@@ -202,6 +162,9 @@ class SqliteX(context: Context)
 
                 if (propertyValue == null) {
                     values.putNull(propertyName)
+                } else if ((property.returnType.classifier as KClass<*>).getFields(true).isNotEmpty()) {
+                    //put data class
+                    values.put(propertyName, gson.toJson(propertyValue))
                 } else {
                     values.put(propertyName, propertyValue.toString())
                 }
@@ -216,6 +179,7 @@ class SqliteX(context: Context)
 
     inline fun <reified T: Any> update(model: T) {
         val entity = T::class
+        val gson = Gson()
 
         entity.whenTableCreated {
             val values = ContentValues()
@@ -231,6 +195,9 @@ class SqliteX(context: Context)
                     values.putNull(propertyName)
                 } else if (propertyName == "id") {
                     id = propertyValue.toString()
+                } else if ((property.returnType.classifier as KClass<*>).getFields(true).isNotEmpty()) {
+                    //put data class
+                    values.put(propertyName, gson.toJson(propertyValue))
                 } else {
                     values.put(propertyName, propertyValue.toString())
                 }
@@ -271,5 +238,80 @@ class SqliteX(context: Context)
             writableDatabase.execSQL(sql)
             close()
         }
+    }
+
+    fun <T : Any> Cursor.getArgs(entity: KClass<T>): T? {
+        val constructor = entity.primaryConstructor
+        val args = entity.getFields(true).map { field ->
+            val columnIndex = getColumnIndex(field.name)
+            val fieldClass = (field.returnType.classifier as KClass<*>)
+            val arguments = field.returnType.arguments
+
+            when {
+                arguments.isNotEmpty() -> {
+                    val argumentsField =
+                        (arguments.first().type?.classifier as KClass<*>).getFields(true)
+                    if (argumentsField.isNotEmpty()) {
+                        //list of data class
+                        getString(columnIndex)
+                    } else {
+                        //list of value
+                        getString(columnIndex)
+                    }
+                }
+                field.returnType.javaType == Int::class.java || field.returnType.javaType == java.lang.Integer::class.java -> {
+                    getIntOrNull(columnIndex)
+                }
+                field.returnType.javaType == String::class.java -> {
+                    getString(columnIndex)
+                }
+                field.returnType.javaType == Double::class.java -> {
+                    getDoubleOrNull(columnIndex)
+                }
+                field.returnType.javaType == Long::class.java -> {
+                    getLongOrNull(columnIndex)
+                }
+                field.returnType.javaType == Float::class.java -> {
+                    getFloatOrNull(columnIndex)
+                }
+                field.returnType.javaType == Blob::class.java -> {
+                    getBlobOrNull(columnIndex)
+                }
+                fieldClass.getFields(true).isNotEmpty() -> {
+                    getString(columnIndex).asClass(fieldClass)
+                }
+                else -> getString(columnIndex)
+            }
+        }.toTypedArray()
+
+        return constructor?.call(*args)
+    }
+
+    private fun String.asClass(fieldClass: KClass<*>): Any? {
+        val constructor = fieldClass.primaryConstructor
+        val gson = Gson()
+
+        val mapType = object : TypeToken<Map<String, Any>>() {}.type
+        val jsonMap: Map<String, Any> = gson.fromJson(this, mapType)
+
+        val args = jsonMap.map { json ->
+            if (json.value is Number) {
+                val currentField = fieldClass.getFields(true).find { it.name == json.key }
+                currentField?.let {
+                    when (it.returnType?.classifier as? KClass<*>) {
+                        Int::class -> (json.value as Double).toInt()
+                        Long::class -> (json.value as Double).toLong()
+                        Float::class -> (json.value as Double).toFloat()
+                        else -> json.value
+                    }
+                } ?: run {
+                    json.value
+                }
+            } else {
+                json.value
+            }
+        }.toTypedArray()
+
+        return constructor?.call(*args)
     }
 }
