@@ -160,9 +160,15 @@ class SqliteX(context: Context)
                 val propertyName = property.name
                 val propertyValue = property.call(model)
 
+                val fieldClass = property.returnType.classifier as KClass<*>
+                val arguments = property.returnType.arguments
+
                 if (propertyValue == null) {
                     values.putNull(propertyName)
-                } else if ((property.returnType.classifier as KClass<*>).getFields(true).isNotEmpty()) {
+                } else if (arguments.isNotEmpty()) {
+                    //put data list
+                    values.put(propertyName, gson.toJson(propertyValue))
+                } else if (fieldClass.getFields(true).isNotEmpty()) {
                     //put data class
                     values.put(propertyName, gson.toJson(propertyValue))
                 } else {
@@ -191,11 +197,17 @@ class SqliteX(context: Context)
                 val propertyName = property.name
                 val propertyValue = property.call(model)
 
+                val fieldClass = property.returnType.classifier as KClass<*>
+                val arguments = property.returnType.arguments
+
                 if (propertyValue == null) {
                     values.putNull(propertyName)
                 } else if (propertyName == "id") {
                     id = propertyValue.toString()
-                } else if ((property.returnType.classifier as KClass<*>).getFields(true).isNotEmpty()) {
+                }  else if (arguments.isNotEmpty()) {
+                    //put data list
+                    values.put(propertyName, gson.toJson(propertyValue))
+                } else if (fieldClass.getFields(true).isNotEmpty()) {
                     //put data class
                     values.put(propertyName, gson.toJson(propertyValue))
                 } else {
@@ -242,6 +254,7 @@ class SqliteX(context: Context)
 
     fun <T : Any> Cursor.getArgs(entity: KClass<T>): T? {
         val constructor = entity.primaryConstructor
+        val gson = Gson()
         val args = entity.getFields(true).map { field ->
             val columnIndex = getColumnIndex(field.name)
             val fieldClass = (field.returnType.classifier as KClass<*>)
@@ -249,14 +262,25 @@ class SqliteX(context: Context)
 
             when {
                 arguments.isNotEmpty() -> {
-                    val argumentsField =
-                        (arguments.first().type?.classifier as KClass<*>).getFields(true)
+                    val firstArgument = arguments.first().type?.classifier as KClass<*>
+                    val argumentsField = firstArgument.getFields(true)
                     if (argumentsField.isNotEmpty()) {
                         //list of data class
-                        getString(columnIndex)
+                        val listType = TypeToken.getParameterized(List::class.java, firstArgument.java).type
+                        val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
+                        dataList
                     } else {
                         //list of value
-                        getString(columnIndex)
+                        val listType = when (firstArgument) {
+                            Int::class -> object : TypeToken<List<Int>>() {}.type
+                            Long::class -> object : TypeToken<List<Long>>() {}.type
+                            Float::class -> object : TypeToken<List<Float>>() {}.type
+                            Double::class -> object : TypeToken<List<Double>>() {}.type
+                            String::class -> object : TypeToken<List<String>>() {}.type
+                            else -> object : TypeToken<List<String>>() {}.type
+                        }
+                        val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
+                        dataList
                     }
                 }
                 field.returnType.javaType == Int::class.java || field.returnType.javaType == java.lang.Integer::class.java -> {
