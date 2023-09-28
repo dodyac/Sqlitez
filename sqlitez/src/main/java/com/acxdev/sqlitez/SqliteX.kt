@@ -20,6 +20,7 @@ import android.database.Cursor
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlin.reflect.KFunction
 
 class SqliteX(context: Context)
     : SQLiteOpenHelper(context, DatabaseNameHolder.dbName, null, 1) {
@@ -32,48 +33,40 @@ class SqliteX(context: Context)
 
     override fun onUpgrade(p0: SQLiteDatabase?, p1: Int, p2: Int) {}
 
-    fun <T : Any> KClass<T>.getTableName(): String? {
-        return simpleName?.replace(Regex("([a-z])([A-Z])"), "$1_$2")?.lowercase(Locale.ROOT)
-    }
-
-    fun <T : Any> KClass<T>.getFields(isIdIncluded: Boolean = false): List<KCallable<*>> {
+    fun <T : Any> KClass<T>.getFields(): List<KCallable<*>> {
         val constructor = constructors.first()
 
         val parameterNames = constructor.parameters.map { it.name }
 
-        val fields = members
+        return members
             .filter { it.name in parameterNames }
             .sortedBy { parameterNames.indexOf(it.name) }
-
-        return if (isIdIncluded) {
-            fields
-        } else {
-            fields.filter { field -> field.name != "id" }
-        }
     }
 
-    fun <T : Any> KClass<T>.whenTableCreated(created: () -> Unit) {
-        val properties = getFields()
+    fun <T : Any> KClass<T>.whenTableCreated(created: (String?, List<KCallable<*>>) -> Unit) {
+        val fields = getFields()
+        val properties = fields.filter { field -> field.name != "id" }
             .joinToString(", ") { field ->
                 val name = field.name
                 "$name TEXT"
             }
-        val sql = "CREATE TABLE IF NOT EXISTS ${getTableName()} (id INTEGER PRIMARY KEY AUTOINCREMENT, $properties)"
+        val tableName = simpleName?.replace(Regex("([a-z])([A-Z])"), "$1_$2")?.lowercase(Locale.ROOT)
+        val sql = "CREATE TABLE IF NOT EXISTS $tableName (id INTEGER PRIMARY KEY AUTOINCREMENT, $properties)"
 
         writableDatabase.execSQL(sql)
         close()
-        created.invoke()
+        created.invoke(tableName, fields)
     }
 
     fun <T : Any> getAll(entity: KClass<T>): List<T> {
         val items = mutableListOf<T>()
-        entity.whenTableCreated {
-            val sql = "SELECT * FROM ${entity.getTableName()}"
+        entity.whenTableCreated { table, fields ->
+            val sql = "SELECT * FROM $table"
             val cursor = readableDatabase.rawQuery(sql, null)
 
             try {
                 while (cursor.moveToNext()) {
-                    cursor?.getArgs(entity)?.let {
+                    cursor?.getArgs(entity.primaryConstructor, fields)?.let {
                         items.add(it)
                     }
                 }
@@ -91,10 +84,10 @@ class SqliteX(context: Context)
         val entity = T::class
         var item: T? = null
 
-        entity.whenTableCreated {
+        entity.whenTableCreated { table, fields ->
             var id = "1"
 
-            entity.getFields(true).forEach { property ->
+            fields.forEach { property ->
                 property.isAccessible = true
 
                 val propertyName = property.name
@@ -106,12 +99,12 @@ class SqliteX(context: Context)
                 property.isAccessible = false
             }
 
-            val sql = "SELECT * FROM ${entity.getTableName()} WHERE id = ?"
+            val sql = "SELECT * FROM $table WHERE id = ?"
             val cursor = readableDatabase.rawQuery(sql, arrayOf(id))
 
             try {
                 if (cursor.moveToFirst()) {
-                    item = cursor.getArgs(entity)
+                    item = cursor.getArgs(entity.primaryConstructor, fields)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Incompatible Data Type")
@@ -128,13 +121,13 @@ class SqliteX(context: Context)
         val entity = T::class
         var item: T? = null
 
-        entity.whenTableCreated {
-            val sql = "SELECT * FROM ${entity.getTableName()} WHERE id = ?"
+        entity.whenTableCreated { table, fields ->
+            val sql = "SELECT * FROM $table WHERE id = ?"
             val cursor = readableDatabase.rawQuery(sql, arrayOf(id.toString()))
 
             try {
                 if (cursor.moveToFirst()) {
-                    item = cursor.getArgs(entity)
+                    item = cursor.getArgs(entity.primaryConstructor, fields)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Incompatible Data Type")
@@ -151,34 +144,39 @@ class SqliteX(context: Context)
         val entity = T::class
         val gson = Gson()
 
-        entity.whenTableCreated {
+        entity.whenTableCreated { table, fields ->
             val values = ContentValues()
 
-            entity.getFields().forEach { property ->
-                property.isAccessible = true
+            fields.filter { field -> field.name != "id" }
+                .forEach { property ->
+                    property.isAccessible = true
 
-                val propertyName = property.name
-                val propertyValue = property.call(model)
+                    val propertyName = property.name
+                    val propertyValue = property.call(model)
 
-                val fieldClass = property.returnType.classifier as KClass<*>
-                val arguments = property.returnType.arguments
+                    val fieldClass = property.returnType.classifier as KClass<*>
+                    val arguments = property.returnType.arguments
 
-                if (propertyValue == null) {
-                    values.putNull(propertyName)
-                } else if (arguments.isNotEmpty()) {
-                    //put data list
-                    values.put(propertyName, gson.toJson(propertyValue))
-                } else if (fieldClass.getFields(true).isNotEmpty()) {
-                    //put data class
-                    values.put(propertyName, gson.toJson(propertyValue))
-                } else {
-                    values.put(propertyName, propertyValue.toString())
+                    if (propertyValue == null) {
+                        values.putNull(propertyName)
+                    } else if (arguments.isNotEmpty()) {
+                        //put data list
+                        values.put(propertyName, gson.toJson(propertyValue))
+                    } else if (fieldClass.getFields().isNotEmpty()) {
+                        //put data class
+                        values.put(propertyName, gson.toJson(propertyValue))
+                    } else {
+                        if (property.returnType.javaType == Boolean::class.java) {
+                            values.put(propertyName, propertyValue.toString().toBoolean())
+                        } else {
+                            values.put(propertyName, propertyValue.toString())
+                        }
+                    }
+
+                    property.isAccessible = false
                 }
 
-                property.isAccessible = false
-            }
-
-            writableDatabase.insert(entity.getTableName(), null, values)
+            writableDatabase.insert(table, null, values)
             close()
         }
     }
@@ -187,11 +185,11 @@ class SqliteX(context: Context)
         val entity = T::class
         val gson = Gson()
 
-        entity.whenTableCreated {
+        entity.whenTableCreated { table, fields ->
             val values = ContentValues()
             var id = "1"
 
-            entity.getFields(true).forEach { property ->
+            fields.forEach { property ->
                 property.isAccessible = true
 
                 val propertyName = property.name
@@ -207,16 +205,20 @@ class SqliteX(context: Context)
                 }  else if (arguments.isNotEmpty()) {
                     //put data list
                     values.put(propertyName, gson.toJson(propertyValue))
-                } else if (fieldClass.getFields(true).isNotEmpty()) {
+                } else if (fieldClass.getFields().isNotEmpty()) {
                     //put data class
                     values.put(propertyName, gson.toJson(propertyValue))
                 } else {
-                    values.put(propertyName, propertyValue.toString())
+                    if (property.returnType.javaType == Boolean::class.java) {
+                        values.put(propertyName, propertyValue.toString().toBoolean())
+                    } else {
+                        values.put(propertyName, propertyValue.toString())
+                    }
                 }
                 property.isAccessible = false
             }
 
-            writableDatabase.update(entity.getTableName(), values, "id = ?", arrayOf(id))
+            writableDatabase.update(table, values, "id = ?", arrayOf(id))
             close()
         }
     }
@@ -224,10 +226,10 @@ class SqliteX(context: Context)
     inline fun <reified T: Any> delete(model: T) {
         val entity = T::class
 
-        entity.whenTableCreated {
+        entity.whenTableCreated { table, fields ->
             var id = "1"
 
-            entity.getFields(true).forEach { property ->
+            fields.forEach { property ->
                 property.isAccessible = true
 
                 val propertyName = property.name
@@ -239,80 +241,83 @@ class SqliteX(context: Context)
                 property.isAccessible = false
             }
 
-            writableDatabase.delete(entity.getTableName(), "id = ?", arrayOf(id))
+            writableDatabase.delete(table, "id = ?", arrayOf(id))
             close()
         }
     }
 
     fun <T: Any> deleteAll(entity: KClass<T>) {
-        entity.whenTableCreated {
-            val sql = "DELETE FROM ${entity.getTableName()}"
+        entity.whenTableCreated { table, _ ->
+            val sql = "DELETE FROM $table"
             writableDatabase.execSQL(sql)
             close()
         }
     }
 
-    fun <T : Any> Cursor.getArgs(entity: KClass<T>): T? {
-        val constructor = entity.primaryConstructor
+    fun <T : Any> Cursor.getArgs(constructor: KFunction<T>?, fields: List<KCallable<*>>): T? {
         val gson = Gson()
-        val args = entity.getFields(true).map { field ->
+        val args = fields.map { field ->
             val columnIndex = getColumnIndex(field.name)
             val fieldClass = (field.returnType.classifier as KClass<*>)
+            val fieldClassFields = fieldClass.getFields()
             val arguments = field.returnType.arguments
 
-            when {
-                arguments.isNotEmpty() -> {
-                    val firstArgument = arguments.first().type?.classifier as KClass<*>
-                    val argumentsField = firstArgument.getFields(true)
-                    if (argumentsField.isNotEmpty()) {
-                        //list of data class
-                        val listType = TypeToken.getParameterized(List::class.java, firstArgument.java).type
-                        val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
-                        dataList
-                    } else {
-                        //list of value
-                        val listType = when (firstArgument) {
-                            Int::class -> object : TypeToken<List<Int>>() {}.type
-                            Long::class -> object : TypeToken<List<Long>>() {}.type
-                            Float::class -> object : TypeToken<List<Float>>() {}.type
-                            Double::class -> object : TypeToken<List<Double>>() {}.type
-                            String::class -> object : TypeToken<List<String>>() {}.type
-                            else -> object : TypeToken<List<String>>() {}.type
-                        }
-                        val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
-                        dataList
+            if (arguments.isNotEmpty()) {
+                val firstArgument = arguments.first().type?.classifier as KClass<*>
+                val argumentsField = firstArgument.getFields()
+                if (argumentsField.isNotEmpty()) {
+                    //list of data class
+                    val listType = TypeToken.getParameterized(List::class.java, firstArgument.java).type
+                    val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
+                    dataList
+                } else {
+                    //list of value
+                    val listType = when (firstArgument) {
+                        Int::class -> object : TypeToken<List<Int>>() {}.type
+                        Long::class -> object : TypeToken<List<Long>>() {}.type
+                        Float::class -> object : TypeToken<List<Float>>() {}.type
+                        Double::class -> object : TypeToken<List<Double>>() {}.type
+                        Boolean::class -> object : TypeToken<List<String>>() {}.type
+                        String::class -> object : TypeToken<List<String>>() {}.type
+                        else -> object : TypeToken<List<String>>() {}.type
                     }
+                    val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
+                    dataList
                 }
-                field.returnType.javaType == Int::class.java || field.returnType.javaType == java.lang.Integer::class.java -> {
-                    getIntOrNull(columnIndex)
+            } else if (fieldClassFields.isNotEmpty()) {
+                getString(columnIndex).asClass(fieldClass.primaryConstructor, fieldClassFields)
+            } else {
+                when(field.returnType.javaType) {
+                    Int::class.java, java.lang.Integer::class.java -> {
+                        getIntOrNull(columnIndex)
+                    }
+                    String::class.java -> {
+                        getString(columnIndex)
+                    }
+                    Double::class.java -> {
+                        getDoubleOrNull(columnIndex)
+                    }
+                    Long::class.java -> {
+                        getLongOrNull(columnIndex)
+                    }
+                    Float::class.java -> {
+                        getFloatOrNull(columnIndex)
+                    }
+                    Blob::class.java -> {
+                        getBlobOrNull(columnIndex)
+                    }
+                    Boolean::class.java -> {
+                        getIntOrNull(columnIndex) == 1
+                    }
+                    else -> getString(columnIndex)
                 }
-                field.returnType.javaType == String::class.java -> {
-                    getString(columnIndex)
-                }
-                field.returnType.javaType == Double::class.java -> {
-                    getDoubleOrNull(columnIndex)
-                }
-                field.returnType.javaType == Long::class.java -> {
-                    getLongOrNull(columnIndex)
-                }
-                field.returnType.javaType == Float::class.java -> {
-                    getFloatOrNull(columnIndex)
-                }
-                field.returnType.javaType == Blob::class.java -> {
-                    getBlobOrNull(columnIndex)
-                }
-                fieldClass.getFields(true).isNotEmpty() -> {
-                    getString(columnIndex).asClass(fieldClass)
-                }
-                else -> getString(columnIndex)
             }
         }.toTypedArray()
 
         return constructor?.call(*args)
     }
 
-    private fun String.asClass(fieldClass: KClass<*>): Any? {
-        val constructor = fieldClass.primaryConstructor
+    private fun <T> String.asClass(constructor: KFunction<T>?, fields: List<KCallable<*>>): Any? {
         val gson = Gson()
 
         val mapType = object : TypeToken<Map<String, Any>>() {}.type
@@ -320,7 +325,7 @@ class SqliteX(context: Context)
 
         val args = jsonMap.map { json ->
             if (json.value is Number) {
-                val currentField = fieldClass.getFields(true).find { it.name == json.key }
+                val currentField = fields.find { it.name == json.key }
                 currentField?.let {
                     when (it.returnType?.classifier as? KClass<*>) {
                         Int::class -> (json.value as Double).toInt()
