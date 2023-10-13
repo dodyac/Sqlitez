@@ -1,37 +1,31 @@
 package com.acxdev.sqlitez
 
-import java.sql.Blob
-import java.util.Locale
-import kotlin.reflect.KCallable
-import kotlin.reflect.KClass
-import kotlin.reflect.full.primaryConstructor
-import kotlin.reflect.jvm.isAccessible
-import kotlin.reflect.jvm.javaType
+import android.content.ContentValues
+import android.content.Context
+import android.database.Cursor
+import android.util.Log
 import androidx.core.database.getBlobOrNull
 import androidx.core.database.getDoubleOrNull
 import androidx.core.database.getFloatOrNull
 import androidx.core.database.getIntOrNull
 import androidx.core.database.getLongOrNull
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
-import android.content.ContentValues
-import android.content.Context
-import android.database.Cursor
-import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.sql.Blob
+import java.util.Locale
+import kotlin.reflect.KCallable
+import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
+import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.javaType
 
-class SqliteX(context: Context)
-    : SQLiteOpenHelper(context, DatabaseNameHolder.dbName, null, 1) {
+class SqliteZAssets(context: Context)
+    : AssetHelper(context, DatabaseNameHolder.dbName, null, 1) {
 
     companion object {
-        const val TAG = "SqliteX"
+        const val TAG = "SqliteZAssets"
     }
-
-    override fun onCreate(p0: SQLiteDatabase?) {}
-
-    override fun onUpgrade(p0: SQLiteDatabase?, p1: Int, p2: Int) {}
 
     fun <T : Any> KClass<T>.getFields(): List<KCallable<*>> {
         val constructor = constructors.first()
@@ -327,7 +321,7 @@ class SqliteX(context: Context)
             if (json.value is Number) {
                 val currentField = fields.find { it.name == json.key }
                 currentField?.let {
-                    when (it.returnType?.classifier as? KClass<*>) {
+                    when (it.returnType.classifier as? KClass<*>) {
                         Int::class -> (json.value as Double).toInt()
                         Long::class -> (json.value as Double).toLong()
                         Float::class -> (json.value as Double).toFloat()
