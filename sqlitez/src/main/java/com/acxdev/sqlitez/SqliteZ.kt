@@ -26,7 +26,7 @@ class SqliteZ(context: Context)
     : SQLiteOpenHelper(context, DatabaseNameHolder.dbName, null, 1) {
 
     companion object {
-        const val TAG = "SqliteZ"
+        val TAG: String = javaClass.simpleName
     }
 
     override fun onCreate(p0: SQLiteDatabase?) {}
