@@ -22,11 +22,11 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlin.reflect.KFunction
 
-class SqliteZ(context: Context)
+class SqliteZ(context: Context?)
     : SQLiteOpenHelper(context, DatabaseNameHolder.dbName, null, 1) {
 
     companion object {
-        val TAG: String = javaClass.simpleName
+        const val TAG = "SqliteZ"
     }
 
     override fun onCreate(p0: SQLiteDatabase?) {}
