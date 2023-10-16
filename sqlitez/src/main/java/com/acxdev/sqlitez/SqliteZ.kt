@@ -259,7 +259,6 @@ class SqliteZ(context: Context?)
         val args = fields.map { field ->
             val columnIndex = getColumnIndex(field.name)
             val fieldClass = (field.returnType.classifier as KClass<*>)
-            val fieldClassFields = fieldClass.getFields()
             val arguments = field.returnType.arguments
 
             if (arguments.isNotEmpty()) {
@@ -284,8 +283,8 @@ class SqliteZ(context: Context?)
                     val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
                     dataList
                 }
-            } else if (fieldClassFields.isNotEmpty()) {
-                getString(columnIndex).asClass(fieldClass.primaryConstructor, fieldClassFields)
+            } else if (fieldClass.getFields().isNotEmpty()) {
+                getString(columnIndex).asClass(fieldClass.primaryConstructor, fieldClass.getFields())
             } else {
                 when(field.returnType.javaType) {
                     Int::class.java, java.lang.Integer::class.java -> {
