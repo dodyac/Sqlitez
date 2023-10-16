@@ -140,7 +140,8 @@ class SqliteZ(context: Context?)
         return item
     }
 
-    inline fun <reified T: Any> insert(model: T) {
+    inline fun <reified T: Any> insert(model: T): Int {
+        var ids = 0L
         val entity = T::class
         val gson = Gson()
 
@@ -176,12 +177,14 @@ class SqliteZ(context: Context?)
                     property.isAccessible = false
                 }
 
-            writableDatabase.insert(table, null, values)
+            ids = writableDatabase.insert(table, null, values)
             close()
         }
+        return ids.toInt()
     }
 
-    inline fun <reified T: Any> update(model: T) {
+    inline fun <reified T: Any> update(model: T): Int {
+        var ids = 0
         val entity = T::class
         val gson = Gson()
 
@@ -218,12 +221,14 @@ class SqliteZ(context: Context?)
                 property.isAccessible = false
             }
 
-            writableDatabase.update(table, values, "id = ?", arrayOf(id))
+            ids = writableDatabase.update(table, values, "id = ?", arrayOf(id))
             close()
         }
+        return ids
     }
 
-    inline fun <reified T: Any> delete(model: T) {
+    inline fun <reified T: Any> delete(model: T): Int {
+        var ids = 0
         val entity = T::class
 
         entity.whenTableCreated { table, fields ->
@@ -241,9 +246,10 @@ class SqliteZ(context: Context?)
                 property.isAccessible = false
             }
 
-            writableDatabase.delete(table, "id = ?", arrayOf(id))
+            ids = writableDatabase.delete(table, "id = ?", arrayOf(id))
             close()
         }
+        return ids
     }
 
     fun <T: Any> deleteAll(entity: KClass<T>) {
