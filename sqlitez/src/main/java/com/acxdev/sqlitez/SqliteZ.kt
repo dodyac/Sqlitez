@@ -20,13 +20,17 @@ import android.database.Cursor
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.reflect.KFunction
+import kotlin.system.measureTimeMillis
 
 class SqliteZ(context: Context?)
     : SQLiteOpenHelper(context, DatabaseNameHolder.dbName, null, 1) {
 
     companion object {
         const val TAG = "SqliteZ"
+        const val DURATION = "SqliteZ_Duration"
     }
 
     override fun onCreate(p0: SQLiteDatabase?) {}
@@ -80,9 +84,39 @@ class SqliteZ(context: Context?)
         return items
     }
 
+    suspend fun <T : Any> suspendGetAll(entity: KClass<T>): List<T> {
+        val items = mutableListOf<T>()
+        var tableName: String? = ""
+
+        val duration = measureTimeMillis {
+            withContext(Dispatchers.IO) {
+                entity.whenTableCreated { table, fields ->
+                    tableName = table
+                    val sql = "SELECT * FROM $table"
+                    val cursor = readableDatabase.rawQuery(sql, null)
+
+                    try {
+                        while (cursor.moveToNext()) {
+                            cursor?.getArgs(entity.primaryConstructor, fields)?.let {
+                                items.add(it)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Incompatible Data Type")
+                        e.printStackTrace()
+                    }
+                    cursor.close()
+                    close()
+                }
+            }
+        }
+        Log.i(DURATION, "getAll $tableName took ${duration.readableDuration()}")
+        return items
+    }
+
     inline fun <reified T : Any> get(model: T): T? {
-        val entity = T::class
         var item: T? = null
+        val entity = T::class
 
         entity.whenTableCreated { table, fields ->
             var id = "1"
@@ -117,9 +151,53 @@ class SqliteZ(context: Context?)
         return item
     }
 
-    inline fun <reified T : Any> getById(id: Int): T? {
-        val entity = T::class
+    suspend inline fun <reified T : Any> suspendGet(model: T): T? {
         var item: T? = null
+        var tableName: String? = ""
+        var ids = "0"
+
+        val duration = measureTimeMillis {
+            withContext(Dispatchers.IO) {
+                val entity = T::class
+                entity.whenTableCreated { table, fields ->
+                    tableName = table
+
+                    fields.forEach { property ->
+                        property.isAccessible = true
+
+                        val propertyName = property.name
+                        val propertyValue = property.call(model)
+
+                        if (propertyName == "id") {
+                            ids = propertyValue.toString()
+                        }
+                        property.isAccessible = false
+                    }
+
+                    val sql = "SELECT * FROM $table WHERE id = ?"
+                    val cursor = readableDatabase.rawQuery(sql, arrayOf(ids))
+
+                    try {
+                        if (cursor.moveToFirst()) {
+                            item = cursor.getArgs(entity.primaryConstructor, fields)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Incompatible Data Type")
+                        e.printStackTrace()
+                    }
+
+                    cursor.close()
+                    close()
+                }
+            }
+        }
+        Log.i(DURATION, "get $tableName with id $ids took ${duration.readableDuration()}")
+        return item
+    }
+
+    inline fun <reified T : Any> getById(id: Int): T? {
+        var item: T? = null
+        val entity = T::class
 
         entity.whenTableCreated { table, fields ->
             val sql = "SELECT * FROM $table WHERE id = ?"
@@ -137,6 +215,36 @@ class SqliteZ(context: Context?)
             cursor.close()
             close()
         }
+        return item
+    }
+
+    suspend inline fun <reified T : Any> suspendGetById(ids: Int): T? {
+        var item: T? = null
+        var tableName: String? = ""
+
+        val duration = measureTimeMillis {
+            withContext(Dispatchers.IO) {
+                val entity = T::class
+                entity.whenTableCreated { table, fields ->
+                    tableName = table
+                    val sql = "SELECT * FROM $table WHERE id = ?"
+                    val cursor = readableDatabase.rawQuery(sql, arrayOf(ids.toString()))
+
+                    try {
+                        if (cursor.moveToFirst()) {
+                            item = cursor.getArgs(entity.primaryConstructor, fields)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Incompatible Data Type")
+                        e.printStackTrace()
+                    }
+
+                    cursor.close()
+                    close()
+                }
+            }
+        }
+        Log.i(DURATION, "get $tableName with id $ids took ${duration.readableDuration()}")
         return item
     }
 
@@ -167,10 +275,17 @@ class SqliteZ(context: Context?)
                         //put data class
                         values.put(propertyName, gson.toJson(propertyValue))
                     } else {
-                        if (property.returnType.javaType == Boolean::class.java) {
-                            values.put(propertyName, propertyValue.toString().toBoolean())
-                        } else {
-                            values.put(propertyName, propertyValue.toString())
+                        when (property.returnType.javaType) {
+                            Boolean::class.java -> {
+                                values.put(propertyName, propertyValue.toString().toBoolean())
+                            }
+                            ByteArray::class.java -> {
+                                val byteArray = propertyValue as? ByteArray
+                                values.put(propertyName, byteArray)
+                            }
+                            else -> {
+                                values.put(propertyName, propertyValue.toString())
+                            }
                         }
                     }
 
@@ -180,6 +295,64 @@ class SqliteZ(context: Context?)
             ids = writableDatabase.insert(table, null, values)
             close()
         }
+        return ids.toInt()
+    }
+
+    suspend inline fun <reified T: Any> suspendInsert(model: T): Int {
+        var ids = 0L
+        var tableName: String? = ""
+
+        val duration = measureTimeMillis {
+            withContext(Dispatchers.IO) {
+                val entity = T::class
+                val gson = Gson()
+
+                entity.whenTableCreated { table, fields ->
+                    tableName = table
+
+                    val values = ContentValues()
+                    fields.filter { field -> field.name != "id" }
+                        .forEach { property ->
+                            property.isAccessible = true
+
+                            val propertyName = property.name
+                            val propertyValue = property.call(model)
+
+                            val fieldClass = property.returnType.classifier as KClass<*>
+                            val arguments = property.returnType.arguments
+
+                            if (propertyValue == null) {
+                                values.putNull(propertyName)
+                            } else if (arguments.isNotEmpty()) {
+                                //put data list
+                                values.put(propertyName, gson.toJson(propertyValue))
+                            } else if (fieldClass.getFields().isNotEmpty()) {
+                                //put data class
+                                values.put(propertyName, gson.toJson(propertyValue))
+                            } else {
+                                when (property.returnType.javaType) {
+                                    Boolean::class.java -> {
+                                        values.put(propertyName, propertyValue.toString().toBoolean())
+                                    }
+                                    ByteArray::class.java -> {
+                                        val byteArray = propertyValue as? ByteArray
+                                        values.put(propertyName, byteArray)
+                                    }
+                                    else -> {
+                                        values.put(propertyName, propertyValue.toString())
+                                    }
+                                }
+                            }
+
+                            property.isAccessible = false
+                        }
+
+                    ids = writableDatabase.insert(table, null, values)
+                    close()
+                }
+            }
+        }
+        Log.i(DURATION, "insert $tableName with id $ids took ${duration.readableDuration()}")
         return ids.toInt()
     }
 
@@ -212,10 +385,17 @@ class SqliteZ(context: Context?)
                     //put data class
                     values.put(propertyName, gson.toJson(propertyValue))
                 } else {
-                    if (property.returnType.javaType == Boolean::class.java) {
-                        values.put(propertyName, propertyValue.toString().toBoolean())
-                    } else {
-                        values.put(propertyName, propertyValue.toString())
+                    when (property.returnType.javaType) {
+                        Boolean::class.java -> {
+                            values.put(propertyName, propertyValue.toString().toBoolean())
+                        }
+                        ByteArray::class.java -> {
+                            val byteArray = propertyValue as? ByteArray
+                            values.put(propertyName, byteArray)
+                        }
+                        else -> {
+                            values.put(propertyName, propertyValue.toString())
+                        }
                     }
                 }
                 property.isAccessible = false
@@ -224,6 +404,65 @@ class SqliteZ(context: Context?)
             ids = writableDatabase.update(table, values, "id = ?", arrayOf(id))
             close()
         }
+        return ids
+    }
+
+    suspend inline fun <reified T: Any> suspendUpdate(model: T): Int {
+        var ids = 0
+        var tableName: String? = ""
+
+        val duration = measureTimeMillis {
+            withContext(Dispatchers.IO) {
+                val entity = T::class
+                val gson = Gson()
+
+                entity.whenTableCreated { table, fields ->
+                    tableName = table
+                    val values = ContentValues()
+                    var id = "1"
+
+                    fields.forEach { property ->
+                        property.isAccessible = true
+
+                        val propertyName = property.name
+                        val propertyValue = property.call(model)
+
+                        val fieldClass = property.returnType.classifier as KClass<*>
+                        val arguments = property.returnType.arguments
+
+                        if (propertyValue == null) {
+                            values.putNull(propertyName)
+                        } else if (propertyName == "id") {
+                            id = propertyValue.toString()
+                        }  else if (arguments.isNotEmpty()) {
+                            //put data list
+                            values.put(propertyName, gson.toJson(propertyValue))
+                        } else if (fieldClass.getFields().isNotEmpty()) {
+                            //put data class
+                            values.put(propertyName, gson.toJson(propertyValue))
+                        } else {
+                            when (property.returnType.javaType) {
+                                Boolean::class.java -> {
+                                    values.put(propertyName, propertyValue.toString().toBoolean())
+                                }
+                                ByteArray::class.java -> {
+                                    val byteArray = propertyValue as? ByteArray
+                                    values.put(propertyName, byteArray)
+                                }
+                                else -> {
+                                    values.put(propertyName, propertyValue.toString())
+                                }
+                            }
+                        }
+                        property.isAccessible = false
+                    }
+
+                    ids = writableDatabase.update(table, values, "id = ?", arrayOf(id))
+                    close()
+                }
+            }
+        }
+        Log.i(DURATION, "update $tableName with id $ids took ${duration.readableDuration()}")
         return ids
     }
 
@@ -252,12 +491,60 @@ class SqliteZ(context: Context?)
         return ids
     }
 
+    suspend inline fun <reified T: Any> suspendDelete(model: T): Int {
+        var ids = 0
+        var tableName: String? = ""
+
+        val duration = measureTimeMillis {
+            withContext(Dispatchers.IO) {
+                val entity = T::class
+                entity.whenTableCreated { table, fields ->
+                    tableName = table
+                    var id = "1"
+
+                    fields.forEach { property ->
+                        property.isAccessible = true
+
+                        val propertyName = property.name
+                        val propertyValue = property.call(model)
+
+                        if (propertyName == "id") {
+                            id = propertyValue.toString()
+                        }
+                        property.isAccessible = false
+                    }
+
+                    ids = writableDatabase.delete(table, "id = ?", arrayOf(id))
+                    close()
+                }
+            }
+        }
+        Log.i(DURATION, "delete $tableName with id $ids took ${duration.readableDuration()}")
+        return ids
+    }
+
     fun <T: Any> deleteAll(entity: KClass<T>) {
         entity.whenTableCreated { table, _ ->
             val sql = "DELETE FROM $table"
             writableDatabase.execSQL(sql)
             close()
         }
+    }
+
+    suspend fun <T: Any> suspendDeleteAll(entity: KClass<T>) {
+        var tableName: String? = ""
+
+        val duration = measureTimeMillis {
+            withContext(Dispatchers.IO) {
+                entity.whenTableCreated { table, _ ->
+                    tableName = table
+                    val sql = "DELETE FROM $table"
+                    writableDatabase.execSQL(sql)
+                    close()
+                }
+            }
+        }
+        Log.i(DURATION, "deleteAll $tableName took ${duration.readableDuration()}")
     }
 
     fun <T : Any> Cursor.getArgs(constructor: KFunction<T>?, fields: List<KCallable<*>>): T? {
@@ -289,6 +576,8 @@ class SqliteZ(context: Context?)
                     val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
                     dataList
                 }
+            } else if(field.returnType.javaType == ByteArray::class.java) {
+                getBlobOrNull(columnIndex)
             } else if (fieldClass.getFields().isNotEmpty()) {
                 getString(columnIndex).asClass(fieldClass.primaryConstructor, fieldClass.getFields())
             } else {
@@ -307,9 +596,6 @@ class SqliteZ(context: Context?)
                     }
                     Float::class.java -> {
                         getFloatOrNull(columnIndex)
-                    }
-                    Blob::class.java -> {
-                        getBlobOrNull(columnIndex)
                     }
                     Boolean::class.java -> {
                         getIntOrNull(columnIndex) == 1
@@ -347,5 +633,14 @@ class SqliteZ(context: Context?)
         }.toTypedArray()
 
         return constructor?.call(*args)
+    }
+
+    fun Long.readableDuration(): String {
+        return when {
+            this < 1000 -> "$this ms"
+            this < 60_000 -> String.format("%.1f s", this / 1000.0)
+            this < 3_600_000 -> String.format("%.1f min", this / 60_000.0)
+            else -> String.format("%.1f hours", this / 3_600_000.0)
+        }
     }
 }
