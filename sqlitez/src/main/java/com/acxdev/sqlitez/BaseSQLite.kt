@@ -11,7 +11,6 @@ import androidx.core.database.getDoubleOrNull
 import androidx.core.database.getFloatOrNull
 import androidx.core.database.getIntOrNull
 import androidx.core.database.getLongOrNull
-import com.acxdev.sqlitez.DatabaseNameHolder
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.util.Locale
@@ -25,25 +24,15 @@ import kotlin.reflect.jvm.javaType
 open class BaseSQLite(context: Context?)
     : SQLiteOpenHelper(context, DatabaseNameHolder.dbName, null, 1) {
 
-    private val TAG: String? = javaClass.simpleName
+    val TAG: String? = javaClass.simpleName
     private val DURATION: String = "${TAG}_Duration"
-    private val gson by lazy {
+    val gson by lazy {
         Gson()
     }
 
     override fun onCreate(p0: SQLiteDatabase?) {}
 
     override fun onUpgrade(p0: SQLiteDatabase?, p1: Int, p2: Int) {}
-
-    private fun <T : Any> KClass<T>.getFields(): List<KCallable<*>> {
-        val constructor = constructors.first()
-
-        val parameterNames = constructor.parameters.map { it.name }
-
-        return members
-            .filter { it.name in parameterNames }
-            .sortedBy { parameterNames.indexOf(it.name) }
-    }
 
     private fun <T> String.asClass(constructor: KFunction<T>?, fields: List<KCallable<*>>): Any? {
         val gson = Gson()
@@ -81,21 +70,88 @@ open class BaseSQLite(context: Context?)
         }
     }
 
-    fun <T : Any> KClass<T>.whenTableCreated(created: (String?, List<KCallable<*>>) -> Unit) {
+    inline fun <T : Any> KClass<T>.whenTableCreated(
+        crossinline created: (
+            tableName: String?,
+            fields: List<KCallable<*>>
+        ) -> Unit) {
+
+        val tableName = simpleName?.replace(Regex("([a-z])([A-Z])"), "$1_$2")?.lowercase(Locale.ROOT)
         val fields = getFields()
-        val properties = fields.filter { field -> field.name != "id" }
+
+        val properties = fields.filter { field -> field.name != "_id" }
             .joinToString(", ") { field ->
                 val name = field.name
                 "$name TEXT"
             }
-        val tableName =
-            simpleName?.replace(Regex("([a-z])([A-Z])"), "$1_$2")?.lowercase(Locale.ROOT)
-        val sql =
-            "CREATE TABLE IF NOT EXISTS $tableName (id INTEGER PRIMARY KEY AUTOINCREMENT, $properties)"
+        val sql = "CREATE TABLE IF NOT EXISTS $tableName (_id INTEGER PRIMARY KEY AUTOINCREMENT, $properties)"
 
         writableDatabase.execSQL(sql)
         close()
         created.invoke(tableName, fields)
+    }
+
+    inline fun <T> KCallable<*>.putContentValues(
+        model: T,
+        contentValues: ContentValues,
+        crossinline idFetched: (
+            id: String
+        ) -> Unit = { _ -> }
+    ) {
+        isAccessible = true
+
+        val value = call(model)
+
+        val fieldClass = returnType.classifier as KClass<*>
+        val arguments = returnType.arguments
+
+        if (value == null) {
+            contentValues.putNull(name)
+        } else if (name == "_id") {
+            idFetched.invoke(value.toString())
+        } else if (arguments.isNotEmpty()) {
+            //put data list
+            contentValues.put(name, gson.toJson(value))
+        } else if (fieldClass.getFields().isNotEmpty()) {
+            //put data class
+            contentValues.put(name, gson.toJson(value))
+        } else {
+            when (returnType.javaType) {
+                Boolean::class.java -> {
+                    contentValues.put(name, value.toString().toBoolean())
+                }
+                ByteArray::class.java -> {
+                    val byteArray = value as? ByteArray
+                    contentValues.put(name, byteArray)
+                }
+                else -> {
+                    contentValues.put(name, value.toString())
+                }
+            }
+        }
+
+        isAccessible = false
+    }
+
+    inline fun whenCursorMoved(
+        crossinline result: () -> Unit
+    ) {
+        try {
+            result.invoke()
+        } catch (e: Exception) {
+            Log.e(TAG, "Incompatible Data Type")
+            e.printStackTrace()
+        }
+    }
+
+    fun <T : Any> KClass<T>.getFields(): List<KCallable<*>> {
+        val constructor = constructors.first()
+
+        val parameterNames = constructor.parameters.map { it.name }
+
+        return members
+            .filter { it.name in parameterNames }
+            .sortedBy { parameterNames.indexOf(it.name) }
     }
 
     fun <T : Any> Cursor.getArgs(constructor: KFunction<T>?, fields: List<KCallable<*>>): T? {
@@ -176,54 +232,5 @@ open class BaseSQLite(context: Context?)
         }
 
         return readableDatabase.rawQuery(sql, selectionArgs)
-    }
-
-    fun <T> KCallable<*>.putContentValues(
-        model: T,
-        contentValues: ContentValues,
-        idFetched: ((String) -> Unit)? = null
-    ) {
-        isAccessible = true
-
-        val value = call(model)
-
-        val fieldClass = returnType.classifier as KClass<*>
-        val arguments = returnType.arguments
-
-        if (value == null) {
-            contentValues.putNull(name)
-        } else if (name == "id") {
-            idFetched?.invoke(value.toString())
-        } else if (arguments.isNotEmpty()) {
-            //put data list
-            contentValues.put(name, gson.toJson(value))
-        } else if (fieldClass.getFields().isNotEmpty()) {
-            //put data class
-            contentValues.put(name, gson.toJson(value))
-        } else {
-            when (returnType.javaType) {
-                Boolean::class.java -> {
-                    contentValues.put(name, value.toString().toBoolean())
-                }
-                ByteArray::class.java -> {
-                    val byteArray = value as? ByteArray
-                    contentValues.put(name, byteArray)
-                }
-                else -> {
-                    contentValues.put(name, value.toString())
-                }
-            }
-        }
-
-        isAccessible = false
-    }
-
-    fun whenCursorMoved(result: () -> Unit) {
-        try {
-            result.invoke()
-        } catch (e: Exception) {
-            Log.e(TAG, "Incompatible Data Type")
-            e.printStackTrace()
-        }
     }
 }

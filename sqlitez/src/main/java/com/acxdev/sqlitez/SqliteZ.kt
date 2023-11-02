@@ -74,7 +74,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 tableName = table
                 val values = ContentValues()
 
-                fields.filter { field -> field.name != "id" }
+                fields.filter { field -> field.name != "_id" }
                     .forEach { field ->
                         field.putContentValues(model, values)
                     }
@@ -82,7 +82,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 ids = writableDatabase.insert(table, null, values)
                 close()
             }
-        }.logDuration("insert $tableName with id $ids")
+        }.logDuration("insert $tableName with _id $ids")
 
         return ids.toInt()
     }
@@ -103,10 +103,10 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                     }
                 }
 
-                writableDatabase.update(table, values, "id = ?", arrayOf(ids))
+                writableDatabase.update(table, values, "_id = ?", arrayOf(ids))
                 close()
             }
-        }.logDuration("update $tableName with id $ids")
+        }.logDuration("update $tableName with _id $ids")
 
         return ids.toInt()
     }
@@ -120,7 +120,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
             entity.whenTableCreated { table, fields ->
                 tableName = table
 
-                fields.find { it.name == "id" }
+                fields.find { it.name == "_id" }
                     ?.let { field ->
                         field.isAccessible = true
 
@@ -130,10 +130,10 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                         field.isAccessible = false
                     }
 
-                writableDatabase.delete(table, "id = ?", arrayOf(ids))
+                writableDatabase.delete(table, "_id = ?", arrayOf(ids))
                 close()
             }
-        }.logDuration("delete $tableName with id $ids")
+        }.logDuration("delete $tableName with _id $ids")
 
         return ids.toInt()
     }
