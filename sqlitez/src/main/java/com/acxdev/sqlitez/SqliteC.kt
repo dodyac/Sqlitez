@@ -27,7 +27,6 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                     tableName = table
 
                     val cursor = condition.getCursor(tableName)
-
                     whenCursorMoved {
                         while (cursor.moveToNext()) {
                             cursor.getArgs(entity.primaryConstructor, fields)?.let {
@@ -55,7 +54,6 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                     tableName = table
 
                     val cursor = condition.getCursor(tableName)
-
                     whenCursorMoved {
                         if (cursor.moveToFirst()) {
                             item = cursor.getArgs(entity.primaryConstructor, fields)
@@ -80,8 +78,8 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                 val entity = T::class
                 entity.whenTableCreated { table, fields ->
                     tableName = table
-                    val values = ContentValues()
 
+                    val values = ContentValues()
                     fields.filter { field -> field.name != "_id" }
                         .forEach { field ->
                             field.putContentValues(model, values)
@@ -105,8 +103,8 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                 val entity = T::class
                 entity.whenTableCreated { table, fields ->
                     tableName = table
-                    val values = ContentValues()
 
+                    val values = ContentValues()
                     fields.forEach { field ->
                         field.putContentValues(model, values) {
                             ids = it
