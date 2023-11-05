@@ -12,7 +12,7 @@ import kotlin.system.measureTimeMillis
 
 class SqliteC(context: Context?) : BaseSQLite(context) {
 
-    suspend fun <T : Any> getAll(entity: KClass<T>, condition: Pair<KProperty1<T, String>, Any>? = null): List<T> {
+    suspend fun <T : Any> getAll(entity: KClass<T>, condition: Pair<KProperty1<T, Any>, Any>? = null): List<T> {
         val items = mutableListOf<T>()
         var tableName: String? = ""
         val log = if (condition != null) {
@@ -44,7 +44,7 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
         return items
     }
 
-    suspend inline fun <reified T : Any> get(condition: Pair<KProperty1<T, String>, Any>): T? {
+    suspend inline fun <reified T : Any> get(condition: Pair<KProperty1<T, Any>, Any>): T? {
         var item: T? = null
         var tableName: String? = ""
 

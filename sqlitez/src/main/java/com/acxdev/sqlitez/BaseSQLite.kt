@@ -220,7 +220,7 @@ open class BaseSQLite(context: Context?)
         Log.i(DURATION, "$log took ${readableDuration()}")
     }
 
-    fun Pair<KProperty1<*, String>, Any>?.getCursor(tableName: String?): Cursor {
+    fun Pair<KProperty1<*, Any>, Any>?.getCursor(tableName: String?): Cursor {
         val sql: String
         val selectionArgs: Array<String>?
 
