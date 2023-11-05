@@ -7,15 +7,16 @@ import android.content.ContentValues
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.reflect.KProperty1
 import kotlin.system.measureTimeMillis
 
 class SqliteC(context: Context?) : BaseSQLite(context) {
 
-    suspend fun <T : Any> getAll(entity: KClass<T>, condition: Pair<String, Any>? = null): List<T> {
+    suspend fun <T : Any> getAll(entity: KClass<T>, condition: Pair<KProperty1<T, String>, Any>? = null): List<T> {
         val items = mutableListOf<T>()
         var tableName: String? = ""
         val log = if (condition != null) {
-            "where ${condition.first} = ${condition.second}"
+            "where ${condition.first.name} = ${condition.second}"
         } else {
             ""
         }
@@ -43,7 +44,7 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
         return items
     }
 
-    suspend inline fun <reified T : Any> get(condition: Pair<String, Any>): T? {
+    suspend inline fun <reified T : Any> get(condition: Pair<KProperty1<T, String>, Any>): T? {
         var item: T? = null
         var tableName: String? = ""
 
@@ -65,7 +66,7 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                     close()
                 }
             }
-        }.logDuration("get $tableName where ${condition.first} = ${condition.second}")
+        }.logDuration("get $tableName where ${condition.first.name} = ${condition.second}")
 
         return item
     }
