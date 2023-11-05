@@ -5,15 +5,16 @@ import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import android.content.ContentValues
 import android.content.Context
+import kotlin.reflect.KProperty1
 import kotlin.system.measureTimeMillis
 
 class SqliteZ(context: Context?) : BaseSQLite(context) {
 
-    fun <T : Any> getAll(entity: KClass<T>, condition: Pair<String, Any>? = null): List<T> {
+    fun <T : Any> getAll(entity: KClass<T>, condition: Pair<KProperty1<T, String>, Any>? = null): List<T> {
         val items = mutableListOf<T>()
         var tableName: String? = ""
         val log = if (condition != null) {
-            "where ${condition.first} = ${condition.second}"
+            "where ${condition.first.name} = ${condition.second}"
         } else {
             ""
         }
@@ -22,24 +23,27 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
             entity.whenTableCreated { table, fields ->
                 tableName = table
 
-                val cursor = condition.getCursor(tableName)
+                try {
+                    val cursor = condition.getCursor(tableName)
 
-                whenCursorMoved {
-                    while (cursor.moveToNext()) {
-                        cursor.getArgs(entity.primaryConstructor, fields)?.let {
-                            items.add(it)
+                    whenCursorMoved {
+                        while (cursor.moveToNext()) {
+                            cursor.getArgs(entity.primaryConstructor, fields)?.let {
+                                items.add(it)
+                            }
                         }
                     }
+                    cursor.close()
+                } finally {
+                    close()
                 }
-                cursor.close()
-                close()
             }
         }.logDuration("getAll $tableName $log")
 
         return items
     }
 
-    inline fun <reified T : Any> get(condition: Pair<String, Any>): T? {
+    inline fun <reified T : Any> get(condition: Pair<KProperty1<T, String>, Any>): T? {
         var item: T? = null
         var tableName: String? = ""
 
@@ -48,18 +52,20 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
             entity.whenTableCreated { table, fields ->
                 tableName = table
 
-                val cursor = condition.getCursor(tableName)
+                try {
+                    val cursor = condition.getCursor(tableName)
 
-                whenCursorMoved {
-                    if (cursor.moveToFirst()) {
-                        item = cursor.getArgs(entity.primaryConstructor, fields)
+                    whenCursorMoved {
+                        if (cursor.moveToFirst()) {
+                            item = cursor.getArgs(entity.primaryConstructor, fields)
+                        }
                     }
+                    cursor.close()
+                } finally {
+                    close()
                 }
-
-                cursor.close()
-                close()
             }
-        }.logDuration("get $tableName where ${condition.first} = ${condition.second}")
+        }.logDuration("get $tableName where ${condition.first.name} = ${condition.second}")
 
         return item
     }
@@ -72,15 +78,18 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
             val entity = T::class
             entity.whenTableCreated { table, fields ->
                 tableName = table
-                val values = ContentValues()
 
-                fields.filter { field -> field.name != "_id" }
-                    .forEach { field ->
-                        field.putContentValues(model, values)
-                    }
+                try {
+                    val values = ContentValues()
 
-                ids = writableDatabase.insert(table, null, values)
-                close()
+                    fields.filter { field -> field.name != "_id" }
+                        .forEach { field ->
+                            field.putContentValues(model, values)
+                        }
+                    ids = writableDatabase.insert(table, null, values)
+                } finally {
+                    close()
+                }
             }
         }.logDuration("insert $tableName with _id $ids")
 
@@ -95,16 +104,19 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
             val entity = T::class
             entity.whenTableCreated { table, fields ->
                 tableName = table
-                val values = ContentValues()
 
-                fields.forEach { field ->
-                    field.putContentValues(model, values) {
-                        ids = it
+                try {
+                    val values = ContentValues()
+
+                    fields.forEach { field ->
+                        field.putContentValues(model, values) {
+                            ids = it
+                        }
                     }
+                    writableDatabase.update(table, values, "_id = ?", arrayOf(ids))
+                } finally {
+                    close()
                 }
-
-                writableDatabase.update(table, values, "_id = ?", arrayOf(ids))
-                close()
             }
         }.logDuration("update $tableName with _id $ids")
 
@@ -120,18 +132,20 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
             entity.whenTableCreated { table, fields ->
                 tableName = table
 
-                fields.find { it.name == "_id" }
-                    ?.let { field ->
-                        field.isAccessible = true
+                try {
+                    fields.find { it.name == "_id" }
+                        ?.let { field ->
+                            field.isAccessible = true
 
-                        val value = field.call(model)
-                        ids = value.toString()
+                            val value = field.call(model)
+                            ids = value.toString()
 
-                        field.isAccessible = false
-                    }
-
-                writableDatabase.delete(table, "_id = ?", arrayOf(ids))
-                close()
+                            field.isAccessible = false
+                        }
+                    writableDatabase.delete(table, "_id = ?", arrayOf(ids))
+                } finally {
+                    close()
+                }
             }
         }.logDuration("delete $tableName with _id $ids")
 
@@ -144,9 +158,13 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
         measureTimeMillis {
             entity.whenTableCreated { table, _ ->
                 tableName = table
-                val sql = "DELETE FROM $table"
-                writableDatabase.execSQL(sql)
-                close()
+
+                try {
+                    val sql = "DELETE FROM $table"
+                    writableDatabase.execSQL(sql)
+                } finally {
+                    close()
+                }
             }
         }.logDuration("deleteAll $tableName")
     }

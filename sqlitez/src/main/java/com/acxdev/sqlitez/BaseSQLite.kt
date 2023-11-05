@@ -17,6 +17,7 @@ import java.util.Locale
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
@@ -219,12 +220,12 @@ open class BaseSQLite(context: Context?)
         Log.i(DURATION, "$log took ${readableDuration()}")
     }
 
-    fun Pair<String, Any>?.getCursor(tableName: String?): Cursor {
+    fun Pair<KProperty1<*, String>, Any>?.getCursor(tableName: String?): Cursor {
         val sql: String
         val selectionArgs: Array<String>?
 
         if (this != null) {
-            sql = "SELECT * FROM $tableName WHERE $first = ?"
+            sql = "SELECT * FROM $tableName WHERE ${first.name} = ?"
             selectionArgs = arrayOf(second.toString())
         } else {
             sql = "SELECT * FROM $tableName"
