@@ -108,7 +108,7 @@ open class BaseSQLite(context: Context?)
 
         if (value == null) {
             contentValues.putNull(name)
-        } else if (name == primaryKey) {
+        } else if (name == value::class.primaryKey) {
             idFetched.invoke(value.toString())
         } else if (arguments.isNotEmpty()) {
             //put data list

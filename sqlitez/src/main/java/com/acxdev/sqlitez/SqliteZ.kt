@@ -33,7 +33,6 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                     }
                 }
                 cursor.close()
-                close()
             }
         }.logDuration("getAll ${items.size} row $tableName $log")
 
@@ -56,7 +55,6 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                     }
                 }
                 cursor.close()
-                close()
             }
         }.logDuration("get $tableName where ${condition.first.name} = ${condition.second}")
 
@@ -77,7 +75,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                         models.forEach { model ->
                             val values = ContentValues()
 
-                            fields.filter { field -> field.name != primaryKey }
+                            fields.filter { field -> field.name != entity.primaryKey }
                                 .forEach { field ->
                                     field.putContentValues(model, values)
                                 }
@@ -86,7 +84,6 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                         db.setTransactionSuccessful()
                     } finally {
                         db.endTransaction()
-                        db.close()
                     }
                 }
             }
@@ -97,19 +94,18 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
         var ids = 0L
         var tableName: String? = ""
 
+        val entity = T::class
         measureTimeMillis {
-            val entity = T::class
             entity.whenTableCreated { table, fields ->
                 tableName = table
                 val values = ContentValues()
-                fields.filter { field -> field.name != primaryKey }
+                fields.filter { field -> field.name != entity.primaryKey }
                     .forEach { field ->
                         field.putContentValues(model, values)
                     }
                 ids = writableDatabase.insert(table, null, values)
-                close()
             }
-        }.logDuration("insert $tableName with $primaryKey $ids")
+        }.logDuration("insert $tableName with ${entity.primaryKey} $ids")
 
         return ids.toInt()
     }
@@ -118,8 +114,8 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
         var ids = "0"
         var tableName: String? = ""
 
+        val entity = T::class
         measureTimeMillis {
-            val entity = T::class
             entity.whenTableCreated { table, fields ->
                 tableName = table
                 val values = ContentValues()
@@ -128,10 +124,9 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                         ids = it
                     }
                 }
-                writableDatabase.update(table, values, "$primaryKey = ?", arrayOf(ids))
-                close()
+                writableDatabase.update(table, values, "${entity.primaryKey} = ?", arrayOf(ids))
             }
-        }.logDuration("update $tableName with $primaryKey $ids")
+        }.logDuration("update $tableName with ${entity.primaryKey} $ids")
 
         return ids.toInt()
     }
@@ -140,11 +135,11 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
         var ids = "0"
         var tableName: String? = ""
 
+        val entity = T::class
         measureTimeMillis {
-            val entity = T::class
             entity.whenTableCreated { table, fields ->
                 tableName = table
-                fields.find { it.name == primaryKey }
+                fields.find { it.name == entity.primaryKey }
                     ?.let { field ->
                         field.isAccessible = true
 
@@ -153,10 +148,9 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
 
                         field.isAccessible = false
                     }
-                writableDatabase.delete(table, "$primaryKey = ?", arrayOf(ids))
-                close()
+                writableDatabase.delete(table, "${entity.primaryKey} = ?", arrayOf(ids))
             }
-        }.logDuration("delete $tableName with $primaryKey $ids")
+        }.logDuration("delete $tableName with ${entity.primaryKey} $ids")
 
         return ids.toInt()
     }
@@ -169,7 +163,6 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 tableName = table
                 val sql = "DELETE FROM $table"
                 writableDatabase.execSQL(sql)
-                close()
             }
         }.logDuration("deleteAll $tableName")
     }

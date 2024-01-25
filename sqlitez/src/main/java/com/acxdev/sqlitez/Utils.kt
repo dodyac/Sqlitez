@@ -1,13 +1,14 @@
 package com.acxdev.sqlitez
 
+import kotlin.reflect.KClass
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.javaType
 
 object Utils {
 
-    inline val <reified T : Any> T.primaryKey: String
+     val <T : Any> KClass<T>.primaryKey: String
         get() {
-            val clazz = this::class
+            val clazz = this
             val parameterNames = (clazz.constructors as List).first().parameters.map { it.name }
 
             val fields = clazz.members.filter { it.name in parameterNames }
