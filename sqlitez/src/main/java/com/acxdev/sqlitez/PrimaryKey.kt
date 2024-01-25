@@ -1,8 +1,13 @@
 package com.acxdev.sqlitez
 
+import kotlin.reflect.full.hasAnnotation
+import kotlin.reflect.jvm.javaType
+
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class PrimaryKey(val strategy: Strategy) {
+annotation class PrimaryKey(
+//    val strategy: Strategy = Strategy.Replace
+) {
     enum class Strategy {
         /**
          * OnConflict strategy constant to replace the old data and continue the transaction.

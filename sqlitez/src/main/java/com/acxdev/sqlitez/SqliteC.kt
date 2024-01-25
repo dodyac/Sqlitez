@@ -5,6 +5,7 @@ import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import android.content.ContentValues
 import android.content.Context
+import com.acxdev.sqlitez.Utils.primaryKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.reflect.KProperty1
@@ -35,7 +36,6 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                         }
                     }
                     cursor.close()
-                    close()
                 }
             }
         }.logDuration("getAll $tableName $log")
@@ -61,7 +61,6 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                     }
 
                     cursor.close()
-                    close()
                 }
             }
         }.logDuration("get $tableName where ${condition.first.name} = ${condition.second}")
@@ -80,16 +79,15 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                     tableName = table
 
                     val values = ContentValues()
-                    fields.filter { field -> field.name != "_id" }
+                    fields.filter { field -> field.name != primaryKey }
                         .forEach { field ->
                             field.putContentValues(model, values)
                         }
 
                     ids = writableDatabase.insert(table, null, values)
-                    close()
                 }
             }
-        }.logDuration("insert $tableName with _id $ids")
+        }.logDuration("insert $tableName with $primaryKey $ids")
 
         return ids.toInt()
     }
@@ -111,11 +109,10 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                         }
                     }
 
-                    writableDatabase.update(table, values, "_id = ?", arrayOf(ids))
-                    close()
+                    writableDatabase.update(table, values, "$primaryKey = ?", arrayOf(ids))
                 }
             }
-        }.logDuration("update $tableName with _id $ids")
+        }.logDuration("update $tableName with $primaryKey $ids")
 
         return ids.toInt()
     }
@@ -130,7 +127,7 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                 entity.whenTableCreated { table, fields ->
                     tableName = table
 
-                    fields.find { it.name == "_id" }
+                    fields.find { it.name == primaryKey }
                         ?.let { field ->
                             field.isAccessible = true
 
@@ -140,11 +137,10 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                             field.isAccessible = false
                         }
 
-                    writableDatabase.delete(table, "_id = ?", arrayOf(ids))
-                    close()
+                    writableDatabase.delete(table, "$primaryKey = ?", arrayOf(ids))
                 }
             }
-        }.logDuration("delete $tableName with _id $ids")
+        }.logDuration("delete $tableName with $primaryKey $ids")
 
         return ids.toInt()
     }
@@ -158,7 +154,6 @@ class SqliteC(context: Context?) : BaseSQLite(context) {
                     tableName = table
                     val sql = "DELETE FROM $table"
                     writableDatabase.execSQL(sql)
-                    close()
                 }
             }
         }.logDuration("deleteAll $tableName")

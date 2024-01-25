@@ -11,6 +11,7 @@ import androidx.core.database.getDoubleOrNull
 import androidx.core.database.getFloatOrNull
 import androidx.core.database.getIntOrNull
 import androidx.core.database.getLongOrNull
+import com.acxdev.sqlitez.Utils.primaryKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.util.Locale
@@ -18,6 +19,7 @@ import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty1
+import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
@@ -80,15 +82,14 @@ open class BaseSQLite(context: Context?)
         val tableName = simpleName?.replace(Regex("([a-z])([A-Z])"), "$1_$2")?.lowercase(Locale.ROOT)
         val fields = getFields()
 
-        val properties = fields.filter { field -> field.name != "_id" }
+        val properties = fields.filter { field -> field.name != primaryKey }
             .joinToString(", ") { field ->
                 val name = field.name
                 "$name TEXT"
             }
-        val sql = "CREATE TABLE IF NOT EXISTS $tableName (_id INTEGER PRIMARY KEY AUTOINCREMENT, $properties)"
+        val sql = "CREATE TABLE IF NOT EXISTS $tableName (${primaryKey} INTEGER PRIMARY KEY AUTOINCREMENT, $properties)"
 
         writableDatabase.execSQL(sql)
-        close()
         created.invoke(tableName, fields)
     }
 
@@ -108,7 +109,7 @@ open class BaseSQLite(context: Context?)
 
         if (value == null) {
             contentValues.putNull(name)
-        } else if (name == "_id") {
+        } else if (name == primaryKey) {
             idFetched.invoke(value.toString())
         } else if (arguments.isNotEmpty()) {
             //put data list
