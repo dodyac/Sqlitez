@@ -68,27 +68,25 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
             val entity = T::class
             entity.whenTableCreated { table, fields ->
                 tableName = table
-                models.forEach { model ->
-                    val db = writableDatabase
-                    db.beginTransaction()
-                    try {
-                        models.forEach { model ->
-                            val values = ContentValues()
+                val db = writableDatabase
+                db.beginTransaction()
+                try {
+                    models.forEach { model ->
+                        val values = ContentValues()
 
-                            fields.filter { field -> field.name != entity.primaryKey }
-                                .forEach { field ->
-                                    field.putContentValues(
-                                        entity = entity,
-                                        model = model,
-                                        contentValues = values
-                                    )
-                                }
-                            db.insert(table, null, values)
-                        }
-                        db.setTransactionSuccessful()
-                    } finally {
-                        db.endTransaction()
+                        fields.filter { field -> field.name != entity.primaryKey }
+                            .forEach { field ->
+                                field.putContentValues(
+                                    entity = entity,
+                                    model = model,
+                                    contentValues = values
+                                )
+                            }
+                        db.insert(table, null, values)
                     }
+                    db.setTransactionSuccessful()
+                } finally {
+                    db.endTransaction()
                 }
             }
         }.logDuration("insertAll ${models.size} row into $tableName")
