@@ -1,8 +1,5 @@
 package com.acxdev.sqlitez
 
-import kotlin.reflect.full.hasAnnotation
-import kotlin.reflect.jvm.javaType
-
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class PrimaryKey(
