@@ -93,6 +93,7 @@ open class BaseSQLite(context: Context?)
     }
 
     inline fun <T> KCallable<*>.putContentValues(
+        entity: KClass<*>,
         model: T,
         contentValues: ContentValues,
         crossinline idFetched: (
@@ -108,7 +109,7 @@ open class BaseSQLite(context: Context?)
 
         if (value == null) {
             contentValues.putNull(name)
-        } else if (name == value::class.primaryKey) {
+        } else if (name == entity.primaryKey) {
             idFetched.invoke(value.toString())
         } else if (arguments.isNotEmpty()) {
             //put data list

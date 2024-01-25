@@ -77,7 +77,11 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
 
                             fields.filter { field -> field.name != entity.primaryKey }
                                 .forEach { field ->
-                                    field.putContentValues(model, values)
+                                    field.putContentValues(
+                                        entity = entity,
+                                        model = model,
+                                        contentValues = values
+                                    )
                                 }
                             db.insert(table, null, values)
                         }
@@ -101,7 +105,11 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 val values = ContentValues()
                 fields.filter { field -> field.name != entity.primaryKey }
                     .forEach { field ->
-                        field.putContentValues(model, values)
+                        field.putContentValues(
+                            entity = entity,
+                            model = model,
+                            contentValues = values
+                        )
                     }
                 ids = writableDatabase.insert(table, null, values)
             }
@@ -120,7 +128,11 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 tableName = table
                 val values = ContentValues()
                 fields.forEach { field ->
-                    field.putContentValues(model, values) {
+                    field.putContentValues(
+                        entity = entity,
+                        model = model,
+                        contentValues = values
+                    ) {
                         ids = it
                     }
                 }
