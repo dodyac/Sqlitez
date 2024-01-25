@@ -22,9 +22,9 @@ object Utils {
                 }
 
                 return primaryKeyField.name
+            } ?: run {
+                //default primary key
+                return "_id"
             }
-
-            //default primary key
-            return "_id"
         }
 }

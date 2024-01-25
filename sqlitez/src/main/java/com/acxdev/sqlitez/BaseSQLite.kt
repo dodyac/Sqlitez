@@ -19,7 +19,6 @@ import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty1
-import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
@@ -89,11 +88,8 @@ open class BaseSQLite(context: Context?)
             }
         val sql = "CREATE TABLE IF NOT EXISTS $tableName (${primaryKey} INTEGER PRIMARY KEY AUTOINCREMENT, $properties)"
 
-        Action.Write.database (action = {
-            execSQL(sql)
-        }, afterExecuted = {
-            created.invoke(tableName, fields)
-        })
+        writableDatabase.execSQL(sql)
+        created.invoke(tableName, fields)
     }
 
     inline fun <T> KCallable<*>.putContentValues(
@@ -224,7 +220,7 @@ open class BaseSQLite(context: Context?)
         Log.i(DURATION, "$log took ${readableDuration()}")
     }
 
-    fun Pair<KProperty1<*, Any>, Any>?.getCursor(tableName: String?): Cursor? {
+    fun Pair<KProperty1<*, Any>, Any>?.getCursor(tableName: String?): Cursor {
         val sql: String
         val selectionArgs: Array<String>?
 
@@ -236,34 +232,6 @@ open class BaseSQLite(context: Context?)
             selectionArgs = null
         }
 
-        var cursor: Cursor? = null
-        Action.Read.database {
-            cursor = rawQuery(sql, selectionArgs)
-        }
-        return cursor
-    }
-
-    enum class Action {
-        Read,
-        Write
-    }
-
-    fun Action.database(afterExecuted: (() -> Unit)? = null, action: SQLiteDatabase.() -> Unit) {
-        val db = when(this) {
-            Action.Read -> readableDatabase
-            Action.Write -> writableDatabase
-        }
-        if (!db.isOpen) {
-            //locked
-        }
-        db.beginTransaction()
-        try {
-            action.invoke(db)
-            db.setTransactionSuccessful()
-        } finally {
-            db.endTransaction()
-            db.close()
-            afterExecuted?.invoke()
-        }
+        return readableDatabase.rawQuery(sql, selectionArgs)
     }
 }
