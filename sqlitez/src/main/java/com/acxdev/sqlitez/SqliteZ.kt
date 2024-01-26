@@ -6,57 +6,96 @@ import kotlin.reflect.jvm.isAccessible
 import android.content.ContentValues
 import android.content.Context
 import com.acxdev.sqlitez.Utils.primaryKey
+import com.acxdev.sqlitez.read.Condition
+import com.acxdev.sqlitez.read.Query
+import com.acxdev.sqlitez.read.Readable
 import kotlin.reflect.KProperty1
 import kotlin.system.measureTimeMillis
 
 class SqliteZ(context: Context?) : BaseSQLite(context) {
 
-    fun <T : Any> getAll(entity: KClass<T>, condition: Pair<KProperty1<T, Any>, Any>? = null): List<T> {
+    fun <T : Any> getAll(
+        entity: KClass<T>,
+        vararg conditions: Condition<T> = arrayOf()
+    ): List<T> {
         val items = mutableListOf<T>()
         var tableName: String? = ""
-        val log = if (condition != null) {
-            "where ${condition.first.name} = ${condition.second}"
-        } else {
-            ""
-        }
+        var log = ""
 
         measureTimeMillis {
             entity.whenTableCreated { table, fields ->
                 tableName = table
 
-                val cursor = condition.getCursor(tableName)
-                whenCursorMoved {
-                    while (cursor.moveToNext()) {
-                        cursor.getArgs(entity.primaryConstructor, fields)?.let {
-                            items.add(it)
-                        }
+                val cursor = Readable(
+                    query = Query.SelectAll,
+                    conditions = conditions.toList()
+                ).getCursor(tableName) {
+                    log = it
+                }
+                cursor.whenMoved {
+                    cursor.getArgs(entity.primaryConstructor, fields)?.let {
+                        items.add(it)
                     }
                 }
                 cursor.close()
             }
-        }.logDuration("getAll ${items.size} row $tableName $log")
+        }.logDuration("getAll $tableName ${items.size} row $log")
 
         return items
     }
 
-    inline fun <reified T : Any> get(condition: Pair<KProperty1<T, Any>, Any>): T? {
+    fun <T : Any> getCount(
+        entity: KClass<T>,
+        vararg conditions: Condition<T> = arrayOf()
+    ): Int {
+        var tableName: String? = ""
+        var count = 0
+        var log = ""
+
+        measureTimeMillis {
+            entity.whenTableCreated { table, _ ->
+                tableName = table
+
+                val cursor = Readable(
+                    query = Query.SelectCount,
+                    conditions = conditions.toList()
+                ).getCursor(tableName) {
+                    log = it
+                }
+                cursor.whenMoved {
+                    count = cursor.getInt(0)
+                }
+                cursor.close()
+            }
+        }.logDuration("getCount $tableName $count $log")
+
+        return count
+    }
+
+    inline fun <reified T : Any> get(
+        vararg conditions: Condition<T> = arrayOf()
+    ): T? {
         var item: T? = null
         var tableName: String? = ""
+        var log = ""
 
         measureTimeMillis {
             val entity = T::class
             entity.whenTableCreated { table, fields ->
                 tableName = table
 
-                val cursor = condition.getCursor(tableName)
-                whenCursorMoved {
-                    if (cursor.moveToFirst()) {
-                        item = cursor.getArgs(entity.primaryConstructor, fields)
-                    }
+                val cursor = Readable(
+                    query = Query.Select,
+                    conditions = conditions.toList()
+                ).getCursor(tableName) {
+                    log = it
+                }
+                cursor.whenMoved {
+                    item = cursor.getArgs(entity.primaryConstructor, fields)
                 }
                 cursor.close()
             }
-        }.logDuration("get $tableName where ${condition.first.name} = ${condition.second}")
+        }.logDuration("get $tableName $log")
 
         return item
     }

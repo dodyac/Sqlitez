@@ -29,3 +29,7 @@ annotation class PrimaryKey(
         Ignore
     }
 }
+//
+//annotation class Query(
+//    val value: String
+//)

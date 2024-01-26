@@ -12,19 +12,20 @@ import androidx.core.database.getFloatOrNull
 import androidx.core.database.getIntOrNull
 import androidx.core.database.getLongOrNull
 import com.acxdev.sqlitez.Utils.primaryKey
+import com.acxdev.sqlitez.read.Query
+import com.acxdev.sqlitez.read.Readable
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.util.Locale
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
-import kotlin.reflect.KProperty1
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
 
 open class BaseSQLite(context: Context?)
-    : SQLiteOpenHelper(context, DatabaseNameHolder.dbName, null, 1) {
+    : SQLiteOpenHelper(context, DatabaseNameHolder.dbName, null, DatabaseNameHolder.dbVersion) {
 
     val TAG: String? = javaClass.simpleName
     private val DURATION: String = "${TAG}_Duration"
@@ -135,11 +136,13 @@ open class BaseSQLite(context: Context?)
         isAccessible = false
     }
 
-    inline fun whenCursorMoved(
+    inline fun Cursor.whenMoved(
         crossinline result: () -> Unit
     ) {
         try {
-            result.invoke()
+            while (moveToNext()) {
+                result.invoke()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Incompatible Data Type")
             e.printStackTrace()
@@ -221,16 +224,25 @@ open class BaseSQLite(context: Context?)
         Log.i(DURATION, "$log took ${readableDuration()}")
     }
 
-    fun Pair<KProperty1<*, Any>, Any>?.getCursor(tableName: String?): Cursor {
-        val sql: String
-        val selectionArgs: Array<String>?
-
-        if (this != null) {
-            sql = "SELECT * FROM $tableName WHERE ${first.name} = ?"
-            selectionArgs = arrayOf(second.toString())
+    fun <T> Readable<T>.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
+        val conditionClause = if (conditions.isNotEmpty()) {
+            val condition = conditions.joinToString(" AND ") { "${it.variable} = ?" }
+            "WHERE $condition"
         } else {
-            sql = "SELECT * FROM $tableName"
-            selectionArgs = null
+            ""
+        }
+        log.invoke(conditionClause)
+
+        val selectionArgs = if (conditions.isNotEmpty()) {
+            conditions.map { it.value.toString() }.toTypedArray()
+        } else {
+            null
+        }
+
+        val sql = when (query) {
+            Query.Select -> "SELECT * FROM $tableName $conditionClause LIMIT 1"
+            Query.SelectAll -> "SELECT * FROM $tableName $conditionClause"
+            Query.SelectCount -> "SELECT COUNT(*) FROM $tableName $conditionClause"
         }
 
         return readableDatabase.rawQuery(sql, selectionArgs)
