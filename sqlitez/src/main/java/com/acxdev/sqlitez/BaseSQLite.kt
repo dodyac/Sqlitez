@@ -11,7 +11,8 @@ import androidx.core.database.getDoubleOrNull
 import androidx.core.database.getFloatOrNull
 import androidx.core.database.getIntOrNull
 import androidx.core.database.getLongOrNull
-import com.acxdev.sqlitez.Utils.primaryKey
+import com.acxdev.sqlitez.common.DatabaseNameHolder
+import com.acxdev.sqlitez.common.Utils.primaryKey
 import com.acxdev.sqlitez.read.Query
 import com.acxdev.sqlitez.read.Readable
 import com.google.gson.Gson

@@ -1,4 +1,4 @@
-package com.acxdev.sqlitez
+package com.acxdev.sqlitez.common
 
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)

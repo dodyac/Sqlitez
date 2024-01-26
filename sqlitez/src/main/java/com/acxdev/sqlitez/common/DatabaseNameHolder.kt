@@ -1,4 +1,4 @@
-package com.acxdev.sqlitez
+package com.acxdev.sqlitez.common
 
 object DatabaseNameHolder {
     var dbName: String = "data.db"

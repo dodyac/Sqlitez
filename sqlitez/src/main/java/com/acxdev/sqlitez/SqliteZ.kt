@@ -5,7 +5,7 @@ import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import android.content.ContentValues
 import android.content.Context
-import com.acxdev.sqlitez.Utils.primaryKey
+import com.acxdev.sqlitez.common.Utils.primaryKey
 import com.acxdev.sqlitez.read.Condition
 import com.acxdev.sqlitez.read.Query
 import com.acxdev.sqlitez.read.Readable
