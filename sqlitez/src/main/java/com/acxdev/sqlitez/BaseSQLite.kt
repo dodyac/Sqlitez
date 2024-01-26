@@ -226,7 +226,7 @@ open class BaseSQLite(context: Context?)
 
     fun <T> Readable<T>.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
         val conditionClause = if (conditions.isNotEmpty()) {
-            val condition = conditions.joinToString(" AND ") { "${it.variable} = ?" }
+            val condition = conditions.joinToString(" AND ") { "${it.variable.name} = ?" }
             "WHERE $condition"
         } else {
             ""
