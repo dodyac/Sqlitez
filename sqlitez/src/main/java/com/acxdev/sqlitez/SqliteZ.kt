@@ -9,7 +9,6 @@ import com.acxdev.sqlitez.common.Utils.primaryKey
 import com.acxdev.sqlitez.read.Condition
 import com.acxdev.sqlitez.read.Query
 import com.acxdev.sqlitez.read.Readable
-import kotlin.reflect.KProperty1
 import kotlin.system.measureTimeMillis
 
 class SqliteZ(context: Context?) : BaseSQLite(context) {
@@ -39,7 +38,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 }
                 cursor.close()
             }
-        }.logDuration("getAll $tableName ${items.size} row $log")
+        }.logDuration("getAll $tableName $log with ${items.size} row")
 
         return items
     }
@@ -67,7 +66,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 }
                 cursor.close()
             }
-        }.logDuration("getCount $tableName $count $log")
+        }.logDuration("getCount $tableName is $count $log")
 
         return count
     }

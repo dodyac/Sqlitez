@@ -232,7 +232,12 @@ open class BaseSQLite(context: Context?)
         } else {
             ""
         }
-        log.invoke(conditionClause)
+        var condition = conditionClause
+
+        conditions.forEach {
+            condition = condition.replaceFirst("?", it.value.toString())
+        }
+        log.invoke(condition)
 
         val selectionArgs = if (conditions.isNotEmpty()) {
             conditions.map { it.value.toString() }.toTypedArray()
