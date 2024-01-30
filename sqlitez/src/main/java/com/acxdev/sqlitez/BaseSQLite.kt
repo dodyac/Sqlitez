@@ -173,8 +173,14 @@ open class BaseSQLite(context: Context?)
                 if (argumentsField.isNotEmpty()) {
                     //list of data class
                     val listType = TypeToken.getParameterized(List::class.java, firstArgument.java).type
-                    val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
-                    dataList
+
+                    val stringIndex = getString(columnIndex)
+                    if (stringIndex != null) {
+                        val dataList = gson.fromJson<List<Any>>(stringIndex, listType)
+                        dataList
+                    } else {
+                        null
+                    }
                 } else {
                     //list of value
                     val listType = when (firstArgument) {
@@ -186,13 +192,23 @@ open class BaseSQLite(context: Context?)
                         String::class -> object : TypeToken<List<String>>() {}.type
                         else -> object : TypeToken<List<String>>() {}.type
                     }
-                    val dataList = gson.fromJson<List<Any>>(getString(columnIndex), listType)
-                    dataList
+                    val stringIndex = getString(columnIndex)
+                    if (stringIndex != null) {
+                        val dataList = gson.fromJson<List<Any>>(stringIndex, listType)
+                        dataList
+                    } else {
+                        null
+                    }
                 }
             } else if(field.returnType.javaType == ByteArray::class.java) {
                 getBlobOrNull(columnIndex)
             } else if (fieldClass.getFields().isNotEmpty()) {
-                getString(columnIndex).asClass(fieldClass.primaryConstructor, fieldClass.getFields())
+                val stringIndex = getString(columnIndex)
+                if (stringIndex != null) {
+                    stringIndex.asClass(fieldClass.primaryConstructor, fieldClass.getFields())
+                } else {
+                    null
+                }
             } else {
                 when(field.returnType.javaType) {
                     Int::class.java, java.lang.Integer::class.java -> {
