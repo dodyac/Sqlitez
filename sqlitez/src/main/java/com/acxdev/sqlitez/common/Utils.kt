@@ -18,6 +18,11 @@ object Utils {
             }
 
             primaryKeyField?.let {
+//                when(primaryKeyField.returnType.javaType) {
+//                    Int::class.java, java.lang.Integer::class.java -> {
+//
+//                    }
+//                }
                 if (primaryKeyField.returnType.javaType != Int::class.java) {
                     throw IllegalArgumentException("Right now, Primary Key only support Int type")
                 }

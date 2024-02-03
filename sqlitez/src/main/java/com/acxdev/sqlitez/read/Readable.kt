@@ -1,6 +1,6 @@
 package com.acxdev.sqlitez.read
 
-data class Readable<T>(
+data class Readable(
     val query: Query,
-    val conditions: List<Condition<T>> = emptyList()
+    val conditions: List<Condition> = emptyList()
 )

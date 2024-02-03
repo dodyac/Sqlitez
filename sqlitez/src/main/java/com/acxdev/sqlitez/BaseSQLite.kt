@@ -13,6 +13,7 @@ import androidx.core.database.getIntOrNull
 import androidx.core.database.getLongOrNull
 import com.acxdev.sqlitez.common.DatabaseNameHolder
 import com.acxdev.sqlitez.common.Utils.primaryKey
+import com.acxdev.sqlitez.read.Condition
 import com.acxdev.sqlitez.read.Query
 import com.acxdev.sqlitez.read.Readable
 import com.google.gson.Gson
@@ -241,30 +242,35 @@ open class BaseSQLite(context: Context?)
         Log.i(DURATION, "$log took ${readableDuration()}")
     }
 
-    fun <T> Readable<T>.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
-        val conditionClause = if (conditions.isNotEmpty()) {
-            val condition = conditions.joinToString(" AND ") { "${it.variable.name} = ?" }
+    fun Readable.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
+        val variableConditions = conditions.filterIsInstance<Condition.Value<*>>()
+        val conditionClause = if (variableConditions.isNotEmpty()) {
+            val condition = variableConditions.joinToString(" AND ") { "${it.variable.name} = ?" }
             "WHERE $condition"
         } else {
             ""
         }
-        var condition = conditionClause
+        val orderByClause = (conditions.firstOrNull {
+            it is Condition.Order
+        } as? Condition.Order)?.query.orEmpty()
 
-        conditions.forEach {
+        var condition = "$conditionClause $orderByClause"
+
+        variableConditions.forEach {
             condition = condition.replaceFirst("?", it.value.toString())
         }
         log.invoke(condition)
 
-        val selectionArgs = if (conditions.isNotEmpty()) {
-            conditions.map { it.value.toString() }.toTypedArray()
+        val selectionArgs = if (variableConditions.isNotEmpty()) {
+            variableConditions.map { it.value.toString() }.toTypedArray()
         } else {
             null
         }
 
         val sql = when (query) {
             Query.Select -> "SELECT * FROM $tableName $conditionClause LIMIT 1"
-            Query.SelectAll -> "SELECT * FROM $tableName $conditionClause"
-            Query.SelectCount -> "SELECT COUNT(*) FROM $tableName $conditionClause"
+            Query.SelectAll -> "SELECT * FROM $tableName $conditionClause $orderByClause"
+            Query.SelectCount -> "SELECT COUNT(*) FROM $tableName $conditionClause $orderByClause"
         }
 
         return readableDatabase.rawQuery(sql, selectionArgs)

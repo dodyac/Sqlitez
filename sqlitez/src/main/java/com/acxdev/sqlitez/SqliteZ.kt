@@ -15,7 +15,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
 
     fun <T : Any> getAll(
         entity: KClass<T>,
-        vararg conditions: Condition<T> = arrayOf()
+        vararg conditions: Condition = arrayOf()
     ): List<T> {
         val items = mutableListOf<T>()
         var tableName: String? = ""
@@ -45,7 +45,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
 
     fun <T : Any> getCount(
         entity: KClass<T>,
-        vararg conditions: Condition<T> = arrayOf()
+        vararg conditions: Condition = arrayOf()
     ): Int {
         var tableName: String? = ""
         var count = 0
@@ -72,7 +72,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
     }
 
     inline fun <reified T : Any> get(
-        vararg conditions: Condition<T> = arrayOf()
+        vararg conditions: Condition = arrayOf()
     ): T? {
         var item: T? = null
         var tableName: String? = ""
