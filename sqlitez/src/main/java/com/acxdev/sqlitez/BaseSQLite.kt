@@ -230,7 +230,16 @@ open class BaseSQLite(context: Context?)
                     Boolean::class.java -> {
                         getIntOrNull(columnIndex) == 1
                     }
-                    else -> getString(columnIndex)
+                    else -> {
+                        if (fieldClass.java.isEnum) {
+                            fieldClass.java.enumConstants
+                                .filterIsInstance<Enum<*>>().find {
+                                    it.name == getString(columnIndex)
+                                }
+                        } else {
+                            getString(columnIndex)
+                        }
+                    }
                 }
             }
         }.toTypedArray()
