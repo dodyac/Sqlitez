@@ -261,20 +261,33 @@ open class BaseSQLite(context: Context?)
         }
         val orderByClause = (conditions.firstOrNull { it is Condition.Order }
                 as? Condition.Order)?.query.orEmpty()
-
         val limit = (conditions.firstOrNull { it is Condition.Limit }
                 as? Condition.Limit)?.query.orEmpty()
 
-        val condition = "$conditionClause $orderByClause"
+        var condition = "$conditionClause $orderByClause"
 
+        variableConditions.forEach {
+            condition = condition.replaceFirst("?", it.value.toString())
+        }
+        log.invoke(condition)
+
+        val selectionArgs = if (variableConditions.isNotEmpty()) {
+            variableConditions.map {
+                when(it.isContains) {
+                    true -> "%${it.value}%"
+                    false -> it.value.toString()
+                }
+            }.toTypedArray()
+        } else {
+            null
+        }
         log.invoke(condition)
 
         val sql = when (query) {
-            Query.Select -> "SELECT * FROM $tableName $conditionClause LIMIT 1"
-            Query.SelectAll -> "SELECT * FROM $tableName $conditionClause $orderByClause $limit"
-            Query.SelectCount -> "SELECT COUNT(*) FROM $tableName $conditionClause $orderByClause"
+            Query.Select -> "SELECT * FROM $tableName $conditionClause $orderByClause $limit"
+            Query.Count -> "SELECT COUNT(*) FROM $tableName $conditionClause $orderByClause"
         }
 
-        return readableDatabase.rawQuery(sql, null)
+        return readableDatabase.rawQuery(sql, selectionArgs)
     }
 }

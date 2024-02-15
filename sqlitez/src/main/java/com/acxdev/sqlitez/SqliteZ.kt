@@ -27,7 +27,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 tableName = table
 
                 val cursor = Readable(
-                    query = Query.SelectAll,
+                    query = Query.Select,
                     conditions = conditions.toList()
                 ).getCursor(tableName) {
                     log = it
@@ -58,7 +58,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                     tableName = table
 
                     val cursor = Readable(
-                        query = Query.SelectAll,
+                        query = Query.Select,
                         conditions = conditions.toList()
                     ).getCursor(tableName) {
                         log = it
@@ -89,7 +89,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 tableName = table
 
                 val cursor = Readable(
-                    query = Query.SelectCount,
+                    query = Query.Count,
                     conditions = conditions.toList()
                 ).getCursor(tableName) {
                     log = it
@@ -118,7 +118,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                     tableName = table
 
                     val cursor = Readable(
-                        query = Query.SelectCount,
+                        query = Query.Count,
                         conditions = conditions.toList()
                     ).getCursor(tableName) {
                         log = it
@@ -148,7 +148,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
 
                 val cursor = Readable(
                     query = Query.Select,
-                    conditions = conditions.toList()
+                    conditions = conditions.toList() + Condition.Limit(1)
                 ).getCursor(tableName) {
                     log = it
                 }
@@ -177,7 +177,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
 
                     val cursor = Readable(
                         query = Query.Select,
-                        conditions = conditions.toList()
+                        conditions = conditions.toList() + Condition.Limit(1)
                     ).getCursor(tableName) {
                         log = it
                     }

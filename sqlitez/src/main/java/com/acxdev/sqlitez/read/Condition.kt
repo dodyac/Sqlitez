@@ -11,9 +11,9 @@ sealed class Condition {
         val query : String
             get() {
                 val query = if (isContains) {
-                    "LOWER(${variable.name}) LIKE LOWER('%${value}%')"
+                    "LOWER(${variable.name}) LIKE LOWER(?)"
                 } else {
-                    "${variable.name} = $value"
+                    "${variable.name} = ?"
                 }
 
                 return query
