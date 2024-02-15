@@ -5,11 +5,22 @@ import kotlin.reflect.KProperty1
 sealed class Condition {
     data class Value<T>(
         val variable: KProperty1<T, Any>,
-        val value: Any
-    ) : Condition()
+        val value: Any,
+        val isContains: Boolean = false
+    ) : Condition() {
+        val query : String
+            get() {
+                val query = if (isContains) {
+                    "LOWER(${variable.name}) LIKE LOWER('%${value}%')"
+                } else {
+                    "${variable.name} = $value"
+                }
+
+                return query
+            }
+    }
     data class Order(
-        val by: OrderBy,
-        val limit: Int = 0
+        val by: OrderBy
     ) : Condition() {
         sealed class OrderBy {
             object Random : OrderBy()
@@ -27,8 +38,16 @@ sealed class Condition {
                     is OrderBy.Ascending -> "${by.variable.name} ASC "
                     is OrderBy.Descending -> "${by.variable.name} DESC "
                     OrderBy.Random -> "RANDOM() "
-                } + if (limit > 0) {
-                    "LIMIT $limit"
+                }
+
+                return query
+            }
+    }
+    data class Limit(val value: Int = 0) : Condition() {
+        val query : String
+            get() {
+                val query = if (value > 0) {
+                    "LIMIT $value"
                 } else {
                     ""
                 }

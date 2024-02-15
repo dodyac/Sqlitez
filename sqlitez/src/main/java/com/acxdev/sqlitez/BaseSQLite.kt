@@ -254,34 +254,27 @@ open class BaseSQLite(context: Context?)
     fun Readable.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
         val variableConditions = conditions.filterIsInstance<Condition.Value<*>>()
         val conditionClause = if (variableConditions.isNotEmpty()) {
-            val condition = variableConditions.joinToString(" AND ") { "${it.variable.name} = ?" }
+            val condition = variableConditions.joinToString(" AND ") { it.query }
             "WHERE $condition"
         } else {
             ""
         }
-        val orderByClause = (conditions.firstOrNull {
-            it is Condition.Order
-        } as? Condition.Order)?.query.orEmpty()
+        val orderByClause = (conditions.firstOrNull { it is Condition.Order }
+                as? Condition.Order)?.query.orEmpty()
 
-        var condition = "$conditionClause $orderByClause"
+        val limit = (conditions.firstOrNull { it is Condition.Limit }
+                as? Condition.Limit)?.query.orEmpty()
 
-        variableConditions.forEach {
-            condition = condition.replaceFirst("?", it.value.toString())
-        }
+        val condition = "$conditionClause $orderByClause"
+
         log.invoke(condition)
-
-        val selectionArgs = if (variableConditions.isNotEmpty()) {
-            variableConditions.map { it.value.toString() }.toTypedArray()
-        } else {
-            null
-        }
 
         val sql = when (query) {
             Query.Select -> "SELECT * FROM $tableName $conditionClause LIMIT 1"
-            Query.SelectAll -> "SELECT * FROM $tableName $conditionClause $orderByClause"
+            Query.SelectAll -> "SELECT * FROM $tableName $conditionClause $orderByClause $limit"
             Query.SelectCount -> "SELECT COUNT(*) FROM $tableName $conditionClause $orderByClause"
         }
 
-        return readableDatabase.rawQuery(sql, selectionArgs)
+        return readableDatabase.rawQuery(sql, null)
     }
 }
