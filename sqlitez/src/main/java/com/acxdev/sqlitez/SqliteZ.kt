@@ -4,12 +4,19 @@ import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import android.content.ContentValues
 import android.content.Context
+import android.util.Log
+import androidx.annotation.RawRes
 import com.acxdev.sqlitez.common.Utils.primaryKey
 import com.acxdev.sqlitez.read.Condition
 import com.acxdev.sqlitez.read.Query
 import com.acxdev.sqlitez.read.Readable
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 import kotlin.system.measureTimeMillis
 
 class SqliteZ(context: Context?) : BaseSQLite(context) {
@@ -74,6 +81,41 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
         }.logDuration("getAll $tableName $log with ${items.size} row")
 
         return items
+    }
+
+    suspend inline fun <reified T : Any> exportTo(
+        file: File,
+        vararg conditions: Condition = arrayOf()
+    ) {
+        measureTimeMillis {
+            val list = getAllSuspend<T>(*conditions)
+            withContext(Dispatchers.IO) {
+                FileOutputStream(file).use {
+                    val json = Gson().toJson(list)
+                    it.write(json.toByteArray())
+                }
+            }
+        }.logDuration("exporting ${T::class.simpleName}")
+    }
+
+    suspend inline fun <reified T : Any> restore(
+        inputStream: InputStream,
+    ) {
+        measureTimeMillis {
+            withContext(Dispatchers.IO) {
+                val jsonFileString = inputStream.bufferedReader()
+                    .use(BufferedReader::readText)
+                try {
+                    val list = Gson().fromJson(jsonFileString, Array<T>::class.java)
+                        ?.toList() ?: emptyList()
+
+                    insertAllSuspend(list)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Restore Error")
+                    e.printStackTrace()
+                }
+            }
+        }.logDuration("restoring ${T::class.simpleName}")
     }
 
     inline fun <reified T : Any> getCount(
