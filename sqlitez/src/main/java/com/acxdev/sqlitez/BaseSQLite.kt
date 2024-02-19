@@ -15,13 +15,13 @@ import com.acxdev.sqlitez.common.DatabaseNameHolder
 import com.acxdev.sqlitez.common.Utils.primaryKey
 import com.acxdev.sqlitez.read.Condition
 import com.acxdev.sqlitez.read.Query
-import com.acxdev.sqlitez.read.Readable
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.util.Locale
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
@@ -251,29 +251,46 @@ open class BaseSQLite(context: Context?)
         Log.i(DURATION, "$log took ${readableDuration()}")
     }
 
-    fun Readable.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
-        val variableConditions = conditions.filterIsInstance<Condition.Value<*>>()
-        val conditionClause = if (variableConditions.isNotEmpty()) {
-            val condition = variableConditions.joinToString(" AND ") { it.query }
+    fun <T> Query<T>.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
+        val conditionsClause = mutableListOf<Condition>()
+        val variablesClause = mutableListOf<KProperty1<T, Any>>()
+
+        when(this) {
+            is Query.SelectAll -> {
+                conditionsClause.addAll(conditions)
+            }
+            is Query.SelectOf<T> ->  {
+                conditionsClause.addAll(conditions)
+                variablesClause.addAll(variables)
+            }
+            is Query.SelectCount -> {
+                conditionsClause.addAll(conditions)
+            }
+        }
+        val conditionValuesClause = conditionsClause.filterIsInstance<Condition.Value<*>>()
+
+        val conditionValuesSql = if (conditionValuesClause.isNotEmpty()) {
+            val condition = conditionValuesClause.joinToString(" AND ") { it.query }
             "WHERE $condition"
         } else {
             ""
         }
-        val orderByClause = (conditions.firstOrNull { it is Condition.Order }
+        val orderByClauseSql = (conditionsClause.firstOrNull { it is Condition.Order }
                 as? Condition.Order)?.query.orEmpty()
-        val limit = (conditions.firstOrNull { it is Condition.Limit }
+        val limitClauseSql = (conditionsClause.firstOrNull { it is Condition.Limit }
                 as? Condition.Limit)?.query.orEmpty()
+        val variablesSql = variablesClause.joinToString(", ") { it.name }.plus(" ")
 
-        var condition = "$conditionClause $orderByClause"
+        var condition = "$variablesSql $conditionValuesSql $orderByClauseSql $limitClauseSql"
 
-        variableConditions.forEach {
+        conditionValuesClause.forEach {
             condition = condition.replaceFirst("?", it.value.toString())
         }
         log.invoke(condition)
 
-        val selectionArgs = if (variableConditions.isNotEmpty()) {
-            variableConditions.map {
-                when(it.isContains) {
+        val selectionArgs = if (conditionValuesClause.isNotEmpty()) {
+            conditionValuesClause.map {
+                when(it.isLowerCase) {
                     true -> "%${it.value}%"
                     false -> it.value.toString()
                 }
@@ -283,9 +300,16 @@ open class BaseSQLite(context: Context?)
         }
         log.invoke(condition)
 
-        val sql = when (query) {
-            Query.Select -> "SELECT * FROM $tableName $conditionClause $orderByClause $limit"
-            Query.Count -> "SELECT COUNT(*) FROM $tableName $conditionClause $orderByClause"
+        val sql = when (this) {
+            is Query.SelectAll -> {
+                "SELECT * FROM $tableName $conditionValuesSql $orderByClauseSql $limitClauseSql"
+            }
+            is Query.SelectOf -> {
+                "SELECT $variablesSql FROM $tableName $conditionValuesSql $orderByClauseSql $limitClauseSql"
+            }
+            is Query.SelectCount -> {
+                "SELECT COUNT(*) FROM $tableName $conditionValuesSql $orderByClauseSql"
+            }
         }
 
         return readableDatabase.rawQuery(sql, selectionArgs)

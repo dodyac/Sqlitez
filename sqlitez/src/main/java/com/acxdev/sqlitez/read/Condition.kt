@@ -6,11 +6,11 @@ sealed class Condition {
     data class Value<T>(
         val variable: KProperty1<T, Any>,
         val value: Any,
-        val isContains: Boolean = false
+        val isLowerCase: Boolean = false
     ) : Condition() {
         val query : String
             get() {
-                val query = if (isContains) {
+                val query = if (isLowerCase) {
                     "LOWER(${variable.name}) LIKE LOWER(?)"
                 } else {
                     "${variable.name} = ?"
