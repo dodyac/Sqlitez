@@ -261,8 +261,12 @@ open class BaseSQLite(context: Context?)
         }
         val conditionValuesClause = conditionsClause.filterIsInstance<Condition.Value<*>>()
 
+        val eachConditionClause = ((conditionsClause.firstOrNull { it is Condition.Each }
+                as? Condition.Each)?.by ?: Condition.Each.Condition.And).name.uppercase()
         val conditionValuesSql = if (conditionValuesClause.isNotEmpty()) {
-            val condition = conditionValuesClause.joinToString(" AND ") { it.query }
+            val condition = conditionValuesClause.joinToString(" $eachConditionClause ") {
+                it.query
+            }
             "WHERE $condition"
         } else {
             ""
@@ -273,7 +277,7 @@ open class BaseSQLite(context: Context?)
                 as? Condition.Limit)?.query.orEmpty()
         val variablesSql = variablesClause.joinToString(", ").plus(" ")
 
-        var condition = "$variablesSql $conditionValuesSql $orderByClauseSql $limitClauseSql"
+        var condition = "$variablesSql $conditionValuesSql $orderByClauseSql $limitClauseSql".trim()
 
         conditionValuesClause.forEach {
             condition = condition.replaceFirst("?", it.value.toString())
@@ -282,9 +286,15 @@ open class BaseSQLite(context: Context?)
 
         val selectionArgs = if (conditionValuesClause.isNotEmpty()) {
             conditionValuesClause.map {
-                when(it.isLowerCase) {
-                    true -> "%${it.value}%"
-                    false -> it.value.toString()
+                when(it.command) {
+                    Condition.Value.Command.Equal -> it.value.toString()
+                    is Condition.Value.Command.Like -> {
+                        when(it.command.operator) {
+                            Condition.Value.Command.Operator.StartWith -> "%${it.value}"
+                            Condition.Value.Command.Operator.Contains -> "%${it.value}%"
+                            Condition.Value.Command.Operator.EndWith -> "${it.value}%"
+                        }
+                    }
                 }
             }.toTypedArray()
         } else {

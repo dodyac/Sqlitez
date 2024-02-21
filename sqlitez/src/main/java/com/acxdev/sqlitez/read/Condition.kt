@@ -6,14 +6,31 @@ sealed class Condition {
     data class Value<T>(
         val variable: KProperty1<T, Any>,
         val value: Any,
+        val command: Command = Command.Equal,
         val isLowerCase: Boolean = false
     ) : Condition() {
+        sealed class Command {
+            object Equal: Command()
+            data class Like(
+                val operator: Operator
+            ): Command()
+
+            enum class Operator {
+                StartWith, Contains, EndWith
+            }
+        }
         val query : String
             get() {
                 val query = if (isLowerCase) {
-                    "LOWER(${variable.name}) LIKE LOWER(?)"
+                    when(command) {
+                        Command.Equal -> "LOWER(${variable.name}) = (?)"
+                        is Command.Like -> "LOWER(${variable.name}) LIKE (?)"
+                    }
                 } else {
-                    "${variable.name} = ?"
+                    when(command) {
+                        Command.Equal -> "${variable.name} = ?"
+                        is Command.Like -> "${variable.name} LIKE ?"
+                    }
                 }
 
                 return query
@@ -54,5 +71,12 @@ sealed class Condition {
 
                 return query
             }
+    }
+    data class Each(
+        val by: Condition
+    ) : Condition() {
+        enum class Condition {
+            And, Or
+        }
     }
 }
