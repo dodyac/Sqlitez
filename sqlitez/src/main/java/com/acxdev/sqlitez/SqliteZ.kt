@@ -158,7 +158,9 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                     tableName = table
 
                     val outputFields = entityOutput.getFields()
-                    val mapOutputFields = outputFields.intersect(fields.toSet()).toList()
+                    val mapOutputFields = outputFields.filter { out ->
+                        out.name in fields.map { it.name }
+                    }
 
                     val conditionsGet = mutableListOf<Condition>()
                     conditionsGet.add(Condition.Limit(1))
@@ -227,7 +229,9 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                     tableName = table
 
                     val outputFields = entityOutput.getFields()
-                    val mapOutputFields = outputFields.intersect(fields.toSet()).toList()
+                    val mapOutputFields = outputFields.filter { out ->
+                        out.name in fields.map { it.name }
+                    }
 
                     val cursor = Query.SelectOf(
                         variables = mapOutputFields.map { it.name },
