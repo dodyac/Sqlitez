@@ -1,16 +1,15 @@
 package com.acxdev.sqlitez.read
 
-import kotlin.reflect.KProperty1
 
-sealed class Query<T>() {
-    data class SelectOf<T>(
-        val variables: List<KProperty1<T, Any>> = emptyList(),
-        val conditions: List<Condition> = emptyList()
-    ) : Query<T>()
+sealed class Query(val conditions: List<Condition>) {
+    data class SelectOf(
+        val variables: List<String> = emptyList(),
+        val cons: List<Condition> = emptyList()
+    ) : Query(cons)
     data class SelectAll(
-        val conditions: List<Condition> = emptyList()
-    ) : Query<Nothing>()
+        val cons: List<Condition> = emptyList()
+    ) : Query(cons)
     data class SelectCount(
-        val conditions: List<Condition> = emptyList()
-    ) : Query<Nothing>()
+        val cons: List<Condition> = emptyList()
+    ) : Query(cons)
 }

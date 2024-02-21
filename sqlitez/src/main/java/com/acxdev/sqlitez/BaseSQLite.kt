@@ -251,21 +251,13 @@ open class BaseSQLite(context: Context?)
         Log.i(DURATION, "$log took ${readableDuration()}")
     }
 
-    fun <T> Query<T>.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
+    fun Query.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
         val conditionsClause = mutableListOf<Condition>()
-        val variablesClause = mutableListOf<KProperty1<T, Any>>()
+        val variablesClause = mutableListOf<String>()
 
-        when(this) {
-            is Query.SelectAll -> {
-                conditionsClause.addAll(conditions)
-            }
-            is Query.SelectOf<T> ->  {
-                conditionsClause.addAll(conditions)
-                variablesClause.addAll(variables)
-            }
-            is Query.SelectCount -> {
-                conditionsClause.addAll(conditions)
-            }
+        conditionsClause.addAll(conditions)
+        if (this is Query.SelectOf) {
+            variablesClause.addAll(variables)
         }
         val conditionValuesClause = conditionsClause.filterIsInstance<Condition.Value<*>>()
 
@@ -279,7 +271,7 @@ open class BaseSQLite(context: Context?)
                 as? Condition.Order)?.query.orEmpty()
         val limitClauseSql = (conditionsClause.firstOrNull { it is Condition.Limit }
                 as? Condition.Limit)?.query.orEmpty()
-        val variablesSql = variablesClause.joinToString(", ") { it.name }.plus(" ")
+        val variablesSql = variablesClause.joinToString(", ").plus(" ")
 
         var condition = "$variablesSql $conditionValuesSql $orderByClauseSql $limitClauseSql"
 

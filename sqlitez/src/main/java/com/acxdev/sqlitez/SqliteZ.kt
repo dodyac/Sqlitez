@@ -5,10 +5,6 @@ import kotlin.reflect.jvm.isAccessible
 import android.content.ContentValues
 import android.content.Context
 import android.util.Log
-import androidx.core.database.getDoubleOrNull
-import androidx.core.database.getFloatOrNull
-import androidx.core.database.getIntOrNull
-import androidx.core.database.getLongOrNull
 import com.acxdev.sqlitez.common.Utils.primaryKey
 import com.acxdev.sqlitez.read.Condition
 import com.acxdev.sqlitez.read.Query
@@ -19,8 +15,6 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
-import kotlin.reflect.KProperty1
-import kotlin.reflect.jvm.javaType
 import kotlin.system.measureTimeMillis
 
 class SqliteZ(context: Context?) : BaseSQLite(context) {
@@ -101,7 +95,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 entity.whenTableCreated { table, _ ->
                     tableName = table
                     val cursor = Query.SelectCount(
-                        conditions = conditions.toList()
+                        cons = conditions.toList()
                     ).getCursor(tableName) {
                         log = it
                     }
@@ -134,7 +128,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                     conditionsGet.addAll(conditions.toList())
 
                     val cursor = Query.SelectAll(
-                        conditions = conditionsGet
+                        cons = conditionsGet
                     ).getCursor(tableName) {
                         log = it
                     }
@@ -149,8 +143,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
         return item
     }
 
-    suspend inline fun <reified T : Any, reified O : Any> getOf(
-        variables: List<KProperty1<T, Any>>,
+    suspend inline fun <reified T : Any, reified O : Any> getMapOf(
         vararg conditions: Condition = arrayOf()
     ): O? {
         var item: O? = null
@@ -164,25 +157,26 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 entity.whenTableCreated { table, fields ->
                     tableName = table
 
+                    val outputFields = entityOutput.getFields()
+                    val mapOutputFields = outputFields.intersect(fields.toSet()).toList()
+
                     val conditionsGet = mutableListOf<Condition>()
                     conditionsGet.add(Condition.Limit(1))
                     conditionsGet.addAll(conditions.toList())
 
                     val cursor = Query.SelectOf(
-                        variables = variables,
-                        conditions = conditionsGet
+                        variables = mapOutputFields.map { it.name },
+                        cons = conditionsGet
                     ).getCursor(tableName) {
                         log = it
                     }
                     cursor.whenMoved {
-                        val outputFields = entityOutput.getFields()
-                        val filteredFields = outputFields.intersect(fields.toSet()).toList()
-                        item = cursor.getArgs(entityOutput.primaryConstructor, filteredFields)
+                        item = cursor.getArgs(entityOutput.primaryConstructor, mapOutputFields)
                     }
                     cursor.close()
                 }
             }
-        }.logDuration("getOf $tableName $log")
+        }.logDuration("getMapOf $tableName $log")
 
         return item
     }
@@ -201,7 +195,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                     tableName = table
 
                     val cursor = Query.SelectAll(
-                        conditions = conditions.toList()
+                        cons = conditions.toList()
                     ).getCursor(tableName) {
                         log = it
                     }
@@ -218,8 +212,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
         return items
     }
 
-    suspend inline fun <reified T: Any, reified O : Any> getAllOf(
-        variables: List<KProperty1<T, Any>>,
+    suspend inline fun <reified T: Any, reified O : Any> getAllMapOf(
         vararg conditions: Condition = arrayOf()
     ): List<O> {
         val items = mutableListOf<O>()
@@ -233,23 +226,24 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 entity.whenTableCreated { table, fields ->
                     tableName = table
 
+                    val outputFields = entityOutput.getFields()
+                    val mapOutputFields = outputFields.intersect(fields.toSet()).toList()
+
                     val cursor = Query.SelectOf(
-                        variables = variables,
-                        conditions = conditions.toList()
+                        variables = mapOutputFields.map { it.name },
+                        cons = conditions.toList()
                     ).getCursor(tableName) {
                         log = it
                     }
                     cursor.whenMoved {
-                        val outputFields = entityOutput.getFields()
-                        val filteredFields = outputFields.intersect(fields.toSet()).toList()
-                        cursor.getArgs(entityOutput.primaryConstructor, filteredFields)?.let {
+                        cursor.getArgs(entityOutput.primaryConstructor, mapOutputFields)?.let {
                             items.add(it)
                         }
                     }
                     cursor.close()
                 }
             }
-        }.logDuration("getAllOf $tableName $log with ${items.size} row")
+        }.logDuration("getAllMapOf $tableName $log with ${items.size} row")
 
         return items
     }
