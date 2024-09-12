@@ -252,68 +252,30 @@ open class BaseSQLite(context: Context?)
     }
 
     fun Query.getCursor(tableName: String?, log: (String) -> Unit): Cursor {
-        val conditionsClause = mutableListOf<Condition>()
         val variablesClause = mutableListOf<String>()
-
-        conditionsClause.addAll(conditions)
         if (this is Query.SelectOf) {
             variablesClause.addAll(variables)
         }
-        val conditionValuesClause = conditionsClause.filterIsInstance<Condition.Value<*>>()
-
-        val eachConditionClause = ((conditionsClause.firstOrNull { it is Condition.Each }
-                as? Condition.Each)?.by ?: Condition.Each.Condition.And).name.uppercase()
-        val conditionValuesSql = if (conditionValuesClause.isNotEmpty()) {
-            val condition = conditionValuesClause.joinToString(" $eachConditionClause ") {
-                it.query
-            }
-            "WHERE $condition"
-        } else {
-            ""
+        val variablesSql = variablesClause.joinToString(", ")
+        val query = condition?.query ?: ""
+        var conditionLog = "$variablesSql $query".trim()
+        condition?.values?.forEach {
+            conditionLog = conditionLog.replaceFirst("?", it.value.toString())
         }
-        val orderByClauseSql = (conditionsClause.firstOrNull { it is Condition.Order }
-                as? Condition.Order)?.query.orEmpty()
-        val limitClauseSql = (conditionsClause.firstOrNull { it is Condition.Limit }
-                as? Condition.Limit)?.query.orEmpty()
-        val variablesSql = variablesClause.joinToString(", ").plus(" ")
-
-        var condition = "$variablesSql $conditionValuesSql $orderByClauseSql $limitClauseSql".trim()
-
-        conditionValuesClause.forEach {
-            condition = condition.replaceFirst("?", it.value.toString())
-        }
-        log.invoke(condition)
-
-        val selectionArgs = if (conditionValuesClause.isNotEmpty()) {
-            conditionValuesClause.map {
-                when(it.command) {
-                    Condition.Value.Command.Equal -> it.value.toString()
-                    is Condition.Value.Command.Like -> {
-                        when(it.command.operator) {
-                            Condition.Value.Command.Operator.StartWith -> "%${it.value}"
-                            Condition.Value.Command.Operator.Contains -> "%${it.value}%"
-                            Condition.Value.Command.Operator.EndWith -> "${it.value}%"
-                        }
-                    }
-                }
-            }.toTypedArray()
-        } else {
-            null
-        }
-        log.invoke(condition)
+        log.invoke(conditionLog)
 
         val sql = when (this) {
             is Query.SelectAll -> {
-                "SELECT * FROM $tableName $conditionValuesSql $orderByClauseSql $limitClauseSql"
+                "SELECT * FROM $tableName $query"
             }
             is Query.SelectOf -> {
-                "SELECT $variablesSql FROM $tableName $conditionValuesSql $orderByClauseSql $limitClauseSql"
+                "SELECT $variablesSql FROM $tableName $query"
             }
             is Query.SelectCount -> {
-                "SELECT COUNT(*) FROM $tableName $conditionValuesSql $orderByClauseSql"
+                "SELECT COUNT(*) FROM $tableName $query"
             }
         }
 
-        return readableDatabase.rawQuery(sql, selectionArgs)
+        return readableDatabase.rawQuery(sql, condition?.args)
     }
 }

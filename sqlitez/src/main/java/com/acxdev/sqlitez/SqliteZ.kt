@@ -83,7 +83,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
     }
 
     suspend inline fun <reified T : Any> getCount(
-        vararg conditions: Condition = arrayOf()
+        condition: Condition? = null
     ): Int {
         var tableName: String? = ""
         var count = 0
@@ -94,11 +94,10 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
             withContext(Dispatchers.IO) {
                 entity.whenTableCreated { table, _ ->
                     tableName = table
-                    val cursor = Query.SelectCount(
-                        cons = conditions.toList()
-                    ).getCursor(tableName) {
-                        log = it
-                    }
+                    val cursor = Query.SelectCount(condition)
+                        .getCursor(tableName) {
+                            log = it
+                        }
                     cursor.whenMoved {
                         count = cursor.getInt(0)
                     }
@@ -111,7 +110,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
     }
 
     suspend inline fun <reified T : Any> get(
-        vararg conditions: Condition = arrayOf()
+        condition: Condition? = null
     ): T? {
         var item: T? = null
         var tableName: String? = ""
@@ -123,15 +122,11 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 entity.whenTableCreated { table, fields ->
                     tableName = table
 
-                    val conditionsGet = mutableListOf<Condition>()
-                    conditionsGet.add(Condition.Limit(1))
-                    conditionsGet.addAll(conditions.toList())
-
-                    val cursor = Query.SelectAll(
-                        cons = conditionsGet
-                    ).getCursor(tableName) {
-                        log = it
-                    }
+                    condition?.limit = 1
+                    val cursor = Query.SelectAll(condition)
+                        .getCursor(tableName) {
+                            log = it
+                        }
                     cursor.whenMoved {
                         item = cursor.getArgs(entity.primaryConstructor, fields)
                     }
@@ -144,7 +139,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
     }
 
     suspend inline fun <reified T : Any, reified O : Any> getMapOf(
-        vararg conditions: Condition = arrayOf()
+        condition: Condition? = null
     ): O? {
         var item: O? = null
         var tableName: String? = ""
@@ -162,13 +157,10 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                         out.name in fields.map { it.name }
                     }
 
-                    val conditionsGet = mutableListOf<Condition>()
-                    conditionsGet.add(Condition.Limit(1))
-                    conditionsGet.addAll(conditions.toList())
-
+                    condition?.limit = 1
                     val cursor = Query.SelectOf(
                         variables = mapOutputFields.map { it.name },
-                        cons = conditionsGet
+                        cons = condition
                     ).getCursor(tableName) {
                         log = it
                     }
@@ -184,7 +176,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
     }
 
     suspend inline fun <reified T : Any> getAll(
-        vararg conditions: Condition = arrayOf()
+        condition: Condition? = null
     ): List<T> {
         val items = mutableListOf<T>()
         var tableName: String? = ""
@@ -196,11 +188,10 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
                 entity.whenTableCreated { table, fields ->
                     tableName = table
 
-                    val cursor = Query.SelectAll(
-                        cons = conditions.toList()
-                    ).getCursor(tableName) {
-                        log = it
-                    }
+                    val cursor = Query.SelectAll(condition)
+                        .getCursor(tableName) {
+                            log = it
+                        }
                     cursor.whenMoved {
                         cursor.getArgs(entity.primaryConstructor, fields)?.let {
                             items.add(it)
@@ -215,7 +206,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
     }
 
     suspend inline fun <reified T: Any, reified O : Any> getAllMapOf(
-        vararg conditions: Condition = arrayOf()
+        condition: Condition? = null
     ): List<O> {
         val items = mutableListOf<O>()
         var tableName: String? = ""
@@ -235,7 +226,7 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
 
                     val cursor = Query.SelectOf(
                         variables = mapOutputFields.map { it.name },
-                        cons = conditions.toList()
+                        cons = condition
                     ).getCursor(tableName) {
                         log = it
                     }
@@ -341,10 +332,10 @@ class SqliteZ(context: Context?) : BaseSQLite(context) {
 
     suspend inline fun <reified T : Any> exportTo(
         file: File,
-        vararg conditions: Condition = arrayOf()
+        condition: Condition? = null
     ) {
         measureTimeMillis {
-            val list = getAll<T>(*conditions)
+            val list = getAll<T>(condition)
             withContext(Dispatchers.IO) {
                 FileOutputStream(file).use {
                     val json = Gson().toJson(list)
