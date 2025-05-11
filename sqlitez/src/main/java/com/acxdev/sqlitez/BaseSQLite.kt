@@ -16,6 +16,7 @@ import com.acxdev.sqlitez.common.Utils.primaryKey
 import com.acxdev.sqlitez.read.Condition
 import com.acxdev.sqlitez.read.Query
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.google.gson.reflect.TypeToken
 import java.util.Locale
 import kotlin.reflect.KCallable
@@ -110,6 +111,12 @@ open class BaseSQLite(context: Context?)
         val value = call(model)
 
         val escapedName = "`$name`"
+        // Get the SerializedName annotation if present
+        val serializedName = annotations
+            .filterIsInstance<SerializedName>()
+            .firstOrNull()
+            ?.value
+
 
         val fieldClass = returnType.classifier as KClass<*>
         val arguments = returnType.arguments
@@ -120,10 +127,16 @@ open class BaseSQLite(context: Context?)
             idFetched.invoke(value.toString())
         } else if (arguments.isNotEmpty()) {
             //put data list
-            contentValues.put(escapedName, gson.toJson(value, fieldClass.java))
+            val json = gson.toJson(value, fieldClass.java)
+            val json2 = gson.toJson(value)
+            val json3 = gson.toJson(value, value::class.java)
+            contentValues.put(escapedName, json)
         } else if (fieldClass.getFields().isNotEmpty()) {
             //put data class
-            contentValues.put(escapedName, gson.toJson(value, fieldClass.java))
+            val json = gson.toJson(value, fieldClass.java)
+            val json2 = gson.toJson(value)
+            val json3 = gson.toJson(value, value::class.java)
+            contentValues.put(escapedName, json)
         } else {
             when (returnType.javaType) {
                 Boolean::class.java -> {
