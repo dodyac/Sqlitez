@@ -16,6 +16,7 @@ import com.acxdev.sqlitez.common.Utils.primaryKey
 import com.acxdev.sqlitez.read.Condition
 import com.acxdev.sqlitez.read.Query
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import com.google.gson.reflect.TypeToken
 import java.util.Locale
@@ -35,6 +36,12 @@ open class BaseSQLite(context: Context?)
     private val DURATION: String = "${TAG}_Duration"
     val gson by lazy {
         Gson()
+    }
+
+    val customGson by lazy {
+        GsonBuilder()
+            .setFieldNamingStrategy(IgnoreSerializedNameStrategy())
+            .create()
     }
 
     override fun onCreate(p0: SQLiteDatabase?) {}
@@ -296,7 +303,7 @@ open class BaseSQLite(context: Context?)
     }
 
     fun Any?.removeDashesKeys(): String {
-        val json = gson.toJsonTree(this) // Convert the object to a JsonElement
+        val json = customGson.toJsonTree(this) // Convert the object to a JsonElement
 
         if (json.isJsonObject) {
             val jsonObject = json.asJsonObject
@@ -315,6 +322,6 @@ open class BaseSQLite(context: Context?)
         }
 
         // Return the modified JSON as a string
-        return gson.toJson(json)
+        return customGson.toJson(json)
     }
 }
