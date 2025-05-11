@@ -111,13 +111,7 @@ open class BaseSQLite(context: Context?)
 
         val value = call(model)
 
-        println("json class ${value?.javaClass?.simpleName}")
-        println("json class ${value?.toString()}")
-        println("json class ${(model as Any).javaClass.name}")
-
-
         val escapedName = "`$name`"
-
 
         val fieldClass = returnType.classifier as KClass<*>
         val arguments = returnType.arguments
@@ -128,21 +122,13 @@ open class BaseSQLite(context: Context?)
             idFetched.invoke(value.toString())
         } else if (arguments.isNotEmpty()) {
             //put data list
-            val json = gson.toJson(value, fieldClass.java)
-            val json2 = gson.toJson(value)
-            val json3 = gson.toJson(value, value::class.java)
+            val json = value.removeDashesKeys()
             println("json $json")
-            println("json2 $json2")
-            println("json3 $json3")
             contentValues.put(escapedName, json)
         } else if (fieldClass.getFields().isNotEmpty()) {
             //put data class
-            val json = gson.toJson(value, fieldClass.java)
-            val json2 = gson.toJson(value)
-            val json3 = gson.toJson(value, value::class.java)
+            val json = value.removeDashesKeys()
             println("json $json")
-            println("json2 $json2")
-            println("json3 $json3")
             contentValues.put(escapedName, json)
         } else {
             when (returnType.javaType) {
@@ -307,5 +293,28 @@ open class BaseSQLite(context: Context?)
         }
 
         return readableDatabase.rawQuery(sql, condition?.args)
+    }
+
+    fun Any?.removeDashesKeys(): String {
+        val json = gson.toJsonTree(this) // Convert the object to a JsonElement
+
+        if (json.isJsonObject) {
+            val jsonObject = json.asJsonObject
+
+            // Create a list of keys to avoid ConcurrentModificationException
+            val keysToModify = jsonObject.keySet().toList()
+
+            // Iterate over each key in the JsonObject
+            for (key in keysToModify) {
+                if (key.contains("-")) {
+                    val newKey = key.replace("-", "") // Remove dashes from the key
+                    val value = jsonObject.remove(key) // Remove the old key-value pair
+                    jsonObject.add(newKey, value) // Add the new key-value pair
+                }
+            }
+        }
+
+        // Return the modified JSON as a string
+        return gson.toJson(json)
     }
 }
