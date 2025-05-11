@@ -195,8 +195,14 @@ open class BaseSQLite(context: Context?)
                     }
                     val stringIndex = getString(columnIndex)
                     if (stringIndex != null) {
-                        val dataList = gson.fromJson<List<Any>>(stringIndex, listType)
-                        dataList
+                        if (fieldClass == Map::class) {
+                            val mapType = object : TypeToken<Map<String, Any>>() {}.type
+                            val dataList = gson.fromJson<Map<String, Any>>(stringIndex, mapType)
+                            dataList
+                        } else {
+                            val dataList = gson.fromJson<List<Any>>(stringIndex, listType)
+                            dataList
+                        }
                     } else {
                         null
                     }
