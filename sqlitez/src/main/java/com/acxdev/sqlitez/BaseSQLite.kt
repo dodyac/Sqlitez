@@ -45,21 +45,22 @@ open class BaseSQLite(context: Context?)
         val mapType = object : TypeToken<Map<String, Any>>() {}.type
         val jsonMap: Map<String, Any> = gson.fromJson(this, mapType)
 
-        val args = jsonMap.map { json ->
-            if (json.value is Number) {
-                val currentField = fields.find { it.name == json.key }
-                currentField?.let {
-                    when (it.returnType.classifier as? KClass<*>) {
-                        Int::class -> (json.value as Double).toInt()
-                        Long::class -> (json.value as Double).toLong()
-                        Float::class -> (json.value as Double).toFloat()
-                        else -> json.value
-                    }
-                } ?: run {
-                    json.value
-                }
+        val args = fields.map { field ->
+            val fieldName = field.name
+            val fieldType = field.returnType.classifier as? KClass<*>
+            val fieldValue = jsonMap[fieldName]
+            if (fieldValue == null) {
+                null
             } else {
-                json.value
+                when (fieldType) {
+                    Int::class -> (fieldValue as? Number)?.toInt()
+                    Long::class -> (fieldValue as? Number)?.toLong()
+                    Float::class -> (fieldValue as? Number)?.toFloat()
+                    Double::class -> (fieldValue as? Number)?.toDouble()
+                    Boolean::class -> (fieldValue as? Boolean)
+                    String::class -> fieldValue as? String
+                    else -> fieldValue
+                }
             }
         }.toTypedArray()
 
