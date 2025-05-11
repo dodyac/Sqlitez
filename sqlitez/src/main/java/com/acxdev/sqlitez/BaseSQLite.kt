@@ -297,35 +297,32 @@ open class BaseSQLite(context: Context?)
     }
 
     fun Any?.removeDashesKeys(): String {
-        val json = gson.toJsonTree(this) // Convert the object to a JsonElement
+        val json = gson.toJsonTree(this)
 
         if (json.isJsonObject) {
             val jsonObject = json.asJsonObject
 
-            // Create a list of keys to avoid ConcurrentModificationException
             val keysToModify = jsonObject.keySet().toList()
 
-            // Iterate over each key in the JsonObject
             for (key in keysToModify) {
-                var newKey: String? = null
-                if (key.isFirstCharUppercase()) {
-                    newKey = key.makeFirstCharLowercase()
+                var newKey = key
+
+                // Make the first character lowercase if it's uppercase
+                if (newKey.firstOrNull()?.isUpperCase() == true) {
+                    newKey = newKey.replaceFirstChar { it.lowercaseChar() }
                 }
-                if (key.contains("-")) {
-                    newKey?.let {
-                        newKey = newKey.replace("-", "")
-                    } ?: run {
-                        newKey = key.replace("-", "")
-                    }
-                }
-                newKey?.let {
-                    val value = jsonObject.remove(key) // Remove the old key-value pair
+
+                // Remove dashes
+                newKey = newKey.replace("-", "")
+
+                // If the key was modified, update it in the JSON object
+                if (newKey != key) {
+                    val value = jsonObject.remove(key)
                     jsonObject.add(newKey, value)
                 }
             }
         }
 
-        // Return the modified JSON as a string
         return gson.toJson(json)
     }
 
