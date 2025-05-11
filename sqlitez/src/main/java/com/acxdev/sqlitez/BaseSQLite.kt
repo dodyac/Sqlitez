@@ -88,7 +88,8 @@ open class BaseSQLite(context: Context?)
         val properties = fields.filter { field -> field.name != primaryKey }
             .joinToString(", ") { field ->
                 val name = field.name
-                "$name TEXT"
+                val escapedName = "`$name`"
+                "$escapedName TEXT"
             }
         val sql = "CREATE TABLE IF NOT EXISTS $tableName (${primaryKey} INTEGER PRIMARY KEY AUTOINCREMENT, $properties)"
 
@@ -108,30 +109,32 @@ open class BaseSQLite(context: Context?)
 
         val value = call(model)
 
+        val escapedName = "`$name`"
+
         val fieldClass = returnType.classifier as KClass<*>
         val arguments = returnType.arguments
 
         if (value == null) {
-            contentValues.putNull(name)
+            contentValues.putNull(escapedName)
         } else if (name == entity.primaryKey) {
             idFetched.invoke(value.toString())
         } else if (arguments.isNotEmpty()) {
             //put data list
-            contentValues.put(name, gson.toJson(value, value::class.java))
+            contentValues.put(escapedName, gson.toJson(value, value::class.java))
         } else if (fieldClass.getFields().isNotEmpty()) {
             //put data class
-            contentValues.put(name, gson.toJson(value, value::class.java))
+            contentValues.put(escapedName, gson.toJson(value, value::class.java))
         } else {
             when (returnType.javaType) {
                 Boolean::class.java -> {
-                    contentValues.put(name, value.toString().toBoolean())
+                    contentValues.put(escapedName, value.toString().toBoolean())
                 }
                 ByteArray::class.java -> {
                     val byteArray = value as? ByteArray
-                    contentValues.put(name, byteArray)
+                    contentValues.put(escapedName, byteArray)
                 }
                 else -> {
-                    contentValues.put(name, value.toString())
+                    contentValues.put(escapedName, value.toString())
                 }
             }
         }
