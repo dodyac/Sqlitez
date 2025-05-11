@@ -120,10 +120,10 @@ open class BaseSQLite(context: Context?)
             idFetched.invoke(value.toString())
         } else if (arguments.isNotEmpty()) {
             //put data list
-            contentValues.put(escapedName, gson.toJson(value, value::class.java))
+            contentValues.put(escapedName, gson.toJson(value, fieldClass.java))
         } else if (fieldClass.getFields().isNotEmpty()) {
             //put data class
-            contentValues.put(escapedName, gson.toJson(value, value::class.java))
+            contentValues.put(escapedName, gson.toJson(value, fieldClass.java))
         } else {
             when (returnType.javaType) {
                 Boolean::class.java -> {
