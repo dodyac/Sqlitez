@@ -62,7 +62,14 @@ open class BaseSQLite(context: Context?)
                     Double::class -> (fieldValue as? Number)?.toDouble()
                     Boolean::class -> (fieldValue as? Boolean)
                     String::class -> fieldValue as? String
-                    else -> fieldValue
+                    else -> {
+                        val jsonString = gson.toJson(fieldValue)
+                        try {
+                            gson.fromJson(jsonString, fieldType?.javaObjectType)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
                 }
             }
         }.toTypedArray()
