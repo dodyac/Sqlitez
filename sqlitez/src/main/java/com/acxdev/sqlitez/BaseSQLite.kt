@@ -130,12 +130,18 @@ open class BaseSQLite(context: Context?)
             val json = gson.toJson(value, fieldClass.java)
             val json2 = gson.toJson(value)
             val json3 = gson.toJson(value, value::class.java)
+            println("json $json")
+            println("json2 $json2")
+            println("json3 $json3")
             contentValues.put(escapedName, json)
         } else if (fieldClass.getFields().isNotEmpty()) {
             //put data class
             val json = gson.toJson(value, fieldClass.java)
             val json2 = gson.toJson(value)
             val json3 = gson.toJson(value, value::class.java)
+            println("json $json")
+            println("json2 $json2")
+            println("json3 $json3")
             contentValues.put(escapedName, json)
         } else {
             when (returnType.javaType) {
