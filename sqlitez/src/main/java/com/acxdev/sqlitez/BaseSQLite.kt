@@ -19,6 +19,7 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.google.gson.reflect.TypeToken
 import java.util.Locale
+import kotlin.jvm.javaClass
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
@@ -110,12 +111,12 @@ open class BaseSQLite(context: Context?)
 
         val value = call(model)
 
+        println("json class ${value?.javaClass?.simpleName}")
+        println("json class ${value?.toString()}")
+        println("json class ${(model as Any).javaClass.name}")
+
+
         val escapedName = "`$name`"
-        // Get the SerializedName annotation if present
-        val serializedName = annotations
-            .filterIsInstance<SerializedName>()
-            .firstOrNull()
-            ?.value
 
 
         val fieldClass = returnType.classifier as KClass<*>
