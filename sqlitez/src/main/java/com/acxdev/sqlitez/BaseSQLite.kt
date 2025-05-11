@@ -38,12 +38,6 @@ open class BaseSQLite(context: Context?)
         Gson()
     }
 
-    val customGson by lazy {
-        GsonBuilder()
-            .setFieldNamingStrategy(IgnoreSerializedNameStrategy())
-            .create()
-    }
-
     override fun onCreate(p0: SQLiteDatabase?) {}
 
     override fun onUpgrade(p0: SQLiteDatabase?, p1: Int, p2: Int) {}
@@ -303,7 +297,7 @@ open class BaseSQLite(context: Context?)
     }
 
     fun Any?.removeDashesKeys(): String {
-        val json = customGson.toJsonTree(this) // Convert the object to a JsonElement
+        val json = gson.toJsonTree(this) // Convert the object to a JsonElement
 
         if (json.isJsonObject) {
             val jsonObject = json.asJsonObject
@@ -313,15 +307,37 @@ open class BaseSQLite(context: Context?)
 
             // Iterate over each key in the JsonObject
             for (key in keysToModify) {
+                var newKey: String? = null
+                if (key.isFirstCharUppercase()) {
+                    newKey = key.makeFirstCharLowercase()
+                }
                 if (key.contains("-")) {
-                    val newKey = key.replace("-", "") // Remove dashes from the key
+                    newKey?.let {
+                        newKey = newKey.replace("-", "")
+                    } ?: run {
+                        newKey = key.replace("-", "")
+                    }
+                }
+                newKey?.let {
                     val value = jsonObject.remove(key) // Remove the old key-value pair
-                    jsonObject.add(newKey, value) // Add the new key-value pair
+                    jsonObject.add(newKey, value)
                 }
             }
         }
 
         // Return the modified JSON as a string
-        return customGson.toJson(json)
+        return gson.toJson(json)
+    }
+
+    fun String.isFirstCharUppercase(): Boolean {
+        return firstOrNull()?.isUpperCase() == true
+    }
+
+    fun String.makeFirstCharLowercase(): String {
+        return if (isNotEmpty()) {
+            this[0].lowercaseChar() + substring(1)
+        } else {
+            this
+        }
     }
 }
